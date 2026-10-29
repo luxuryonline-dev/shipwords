@@ -32,7 +32,7 @@ const PRICE = PRODUCT ? formatPrice(PRODUCT) : '';
 
 /**
  * The stage image public/media/stage.jpg is three frames of the viral clip (left: band at 16.8 s, top right: lead at 9.8 s, bottom right: sax at 14.9 s), 1020×960.
- * stage-ours-n.jpg is the hero output at the same moments (the output starts at 1.375 s of the original, so each minus 1.375) with the same scale and crop; the slot coordinates fit both images.
+ * stage-ours-n.jpg is the replacement output collage; OUR_SEATS matches its new face centers.
  * x and y are each face center as a percent of stage width and height; size is the slot diameter as a percent of stage width. Remeasure if the image changes.
  * stage-dogs.jpg is the dog output cut the same way, except the band frame is at 15.1 s (at 15.425 s the golden retriever raises what looks like a human hand); faces sit in the same places.
  * edge: the face touches the stage's left edge, so the name label is left-aligned and not clipped on narrow screens.
@@ -121,7 +121,7 @@ export function TinyDeskTool({
   stage = 'viral',
 }: {
   generation: ReturnType<typeof useGeneration>;
-  /** The stage image follows the hero sample: coaches for the original, the swapped-in faces for our output (stage-ours-n.jpg), five dogs for the dog version (stage-dogs.jpg); all three share the slot coordinates. */
+  /** The stage follows the hero sample. Original and Dogs use SEATS; the replacement Our cut collage uses OUR_SEATS. */
   stage?: 'viral' | 'ours' | 'dogs';
 }) {
   const seats = stage === 'ours' ? OUR_SEATS : SEATS;
