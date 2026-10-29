@@ -28,9 +28,9 @@ export const Route = createRootRoute({
       },
       { rel: 'stylesheet', href: appCss },
       // Link previews and many crawlers ignore SVG, so the ICO goes first as a fallback.
-      { rel: 'icon', href: '/favicon.ico', sizes: '32x32' },
-      { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
-      { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
+      { rel: 'icon', href: '/favicon.ico?v=brand2', sizes: '32x32' },
+      { rel: 'icon', href: '/favicon.svg?v=brand2', type: 'image/svg+xml' },
+      { rel: 'apple-touch-icon', href: '/apple-touch-icon.png?v=brand2' },
     ],
     // The stats script is not loaded in local dev, so dev traffic stays out of reports.
     scripts: import.meta.env.DEV ? [] : analyticsScripts(site),
@@ -98,7 +98,7 @@ function Layout() {
     <div className="page">
       <header className="site-header">
         <Link to="/" className="brand">
-          <img className="brand-mark" src="/logo.svg" alt="" width={47} height={43} />
+          <img className="brand-mark" src="/logo.png?v=brand2" alt="" width={48} height={48} />
           {site.name}
         </Link>
         <nav>
