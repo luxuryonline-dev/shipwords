@@ -21,7 +21,7 @@ shipwords is a free, MIT-licensed framework for running a fleet of new-keyword A
 
 **Built for a fleet of new-keyword sites.** Put up a site for every new keyword, keep improving the ones that take off, and leave the rest alone. Fix a bug in the shared core once, and every site can take the update on its next deploy. Each site deploys on its own, with its own database, storage and payment account, so launching or retiring one never touches the others.
 
-**Proven AI, built in.** [tinydeskai.io](https://tinydeskai.io/) is built on shipwords, and its full source is in [`sites/tinydeskai-example`](sites/tinydeskai-example), ready to fork.
+**Proven AI, built in.** [tinydeskaigenerator.org](https://tinydeskaigenerator.org/) is built on shipwords, and its full source is in [`sites/tinydeskai-example`](sites/tinydeskai-example), ready to fork.
 
 - **Video templates**: turn a viral clip into a template; visitors upload photos and get the same video back. That's how Tiny Desk AI works.
 - **Face swap that holds up**: the whole clip in one pass. Each uploaded photo replaces a performer, face, hair and clothes, with mouths still on the beat. If an original face is still there, the job fails and the credits come back.
