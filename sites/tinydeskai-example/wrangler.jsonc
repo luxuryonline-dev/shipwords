@@ -41,7 +41,7 @@
     "bindings": [{ "name": "COMPOSE", "class_name": "ComposeContainer" }]
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ComposeContainer"] }],
-  // Add the EMAIL binding after verifying Email Sending for this domain.
+  "send_email": [{ "name": "EMAIL" }],
   // Local dev neither builds nor runs the container (no Docker needed); with UPSTREAM_MOCK=1 the mock composer is used instead.
   "dev": { "enable_containers": false }
 }

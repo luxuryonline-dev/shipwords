@@ -1,3 +1,3 @@
-// Enable only after media, generation, email and payment setup are verified.
-export const LAUNCH_READY = false;
+// Production release: deploy only after runtime email and payment configuration is verified.
+export const LAUNCH_READY = true;
 export const PREVIEW_NOTICE = 'Preview: video generation and purchases are coming soon.';
