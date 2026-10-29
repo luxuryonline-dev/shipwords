@@ -205,6 +205,21 @@
       "path": "media/viral-nfl.mp4",
       "sha256": "2eb55ee53dbe81cd83c19a55c69643122ce954b1fd5abc6146bba5964f8214cb",
       "bytes": 1812220
+    },
+    {
+      "path": "media/stage-ours-n.jpg",
+      "bytes": 205806,
+      "sha256": "20c0d9757cabcf483563a2b1892891016dfd506261b482fee727c82e4ee5e032"
+    },
+    {
+      "path": "media/sample-full-band-n.mp4",
+      "bytes": 7147116,
+      "sha256": "78462b4addc34f7fa07c9411a6a2b398c7efa206c03f3ca304cbe8118b01fdcd"
+    },
+    {
+      "path": "media/sample-full-band-n.jpg",
+      "bytes": 224914,
+      "sha256": "664780fe1a1d5896821eee28742b2d34817db71ef930a93cd0d0932a0001fae3"
     }
   ]
 }
