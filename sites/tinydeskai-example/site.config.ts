@@ -5,7 +5,7 @@ import { defineSite } from '@shipwords/core/site';
 // Same flow as competing sites: sign in, then buy, then generate. No guest trial and no sign-up bonus.
 export default defineSite({
   id: 'tinydeskaigenerator',
-  name: 'Tiny Desk AI',
+  name: 'Tiny Desk AI Generator',
   url: 'https://tinydeskaigenerator.org',
   locales: ['en'],
   defaultLocale: 'en',

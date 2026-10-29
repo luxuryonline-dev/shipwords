@@ -24,3 +24,8 @@
 - **Sample captions**: "Made from an AI-generated photo" or "Reference clip, not a live result".
 - **Crew line-up**: not equal-sized cards but a gig-poster line-up: one crew per row, big Anton name (amber on odd rows), a one-line description on the right, thin dividers.
 - **Content pages** (tutorial, template, guides): long poster-paper cards, `#efe6d2` with a faint halftone, ink text, serif headings, Anton tags, mono tables.
+
+## Domain brand identity
+
+- The brand for tinydeskaigenerator.org is Tiny Desk AI Generator. Match the site name, homepage brand mentions and logo assets to that name.
+- Use the original amber desk/audio/play mark for the logo and browser icons. Preserve the existing layout, copy concept, examples, pricing, feature claims and generator behavior.
