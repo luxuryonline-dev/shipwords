@@ -8,6 +8,7 @@ import { m } from '~/paraglide/messages.js';
 import { getLocale, setLocale } from '~/paraglide/runtime.js';
 import { AccountDialog, AccountLink } from '~/site/account';
 import { GUIDES } from '~/site/guide';
+import { LAUNCH_READY, PREVIEW_NOTICE } from '~/site/launch';
 import { SUPPORT_EMAIL } from '~/site/legal';
 import { PricingDialog, PricingLink } from '~/site/pricing';
 import { openSignIn, promptGoogleOneTap, SignInDialog } from '~/site/sign-in';
@@ -128,6 +129,11 @@ function Layout() {
           )}
         </nav>
       </header>
+      {!LAUNCH_READY && (
+        <p className="notice" role="status">
+          {PREVIEW_NOTICE}
+        </p>
+      )}
       <main>
         <Outlet />
       </main>

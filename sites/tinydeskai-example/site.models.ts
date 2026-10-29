@@ -99,7 +99,8 @@ export default defineModels([
       // Output: the original song from 1.375–19.063 s of the viral clip, 720×1280, 24 fps.
       compose: {
         audio: 'assets/tinydesk/song.m4a',
-        audioStart: 1.375,
+        // song.m4a is extracted from full-17s.mp4, which already starts at the selected cut.
+        audioStart: 0,
         audioDuration: 17.688,
         width: 720,
         height: 1280,

@@ -1,0 +1,210 @@
+{
+  "baseUrl": "https://pub-18c860c937544ad9932d6bfb59c6682d.r2.dev",
+  "files": [
+    {
+      "path": "media/dogs/back-left-face.jpg",
+      "sha256": "3a24f4cbb0f55186b96f2a046201228451ebc4f6516bd679f13cca3679bbcabb",
+      "bytes": 7632
+    },
+    {
+      "path": "media/dogs/back-right-face.jpg",
+      "sha256": "c2d060a8847f303a3e7c74cdd85bad6216eaee0b35dd1a8ddb009d4c0e5e7aee",
+      "bytes": 8705
+    },
+    {
+      "path": "media/dogs/back-left.jpg",
+      "sha256": "6ee5ceee3b62fa803816463901e075a792e480bf681dd21781348ae80a6d864b",
+      "bytes": 87891
+    },
+    {
+      "path": "media/dogs/keys-face.jpg",
+      "sha256": "3b231d98e3122992c8f8269cf4b25b9b7219acdf8b7b30c0a36b3b3a71b1c683",
+      "bytes": 9279
+    },
+    {
+      "path": "media/dogs/lead-face.jpg",
+      "sha256": "a237469ae27b90bd9d396751bbd413188049408406a8164e4727e734759fd489",
+      "bytes": 5936
+    },
+    {
+      "path": "media/dogs/keys.jpg",
+      "sha256": "38065f298fd6aa53c04e7a01b7552866881468d476145216192e49061666b2dd",
+      "bytes": 94169
+    },
+    {
+      "path": "media/dogs/sax-face.jpg",
+      "sha256": "1b6ee7efee89114af1b6623cdff7b01710f5711aa68c8f402a71f31312f5ee21",
+      "bytes": 7627
+    },
+    {
+      "path": "media/dogs/back-right.jpg",
+      "sha256": "a4b32e642faffdcff5e4a9000b9e38da8a6977b62adb878fbf73a7f11e64f371",
+      "bytes": 94204
+    },
+    {
+      "path": "media/dogs/lead.jpg",
+      "sha256": "66e74bbb7be33888a931d0326897acb0fdb2605947a390f3c2f0a86c4188fd88",
+      "bytes": 69746
+    },
+    {
+      "path": "media/dogs/sax.jpg",
+      "sha256": "ba6c1305c132b91f4e4a3fccfd3ed58192e8c36830345a71b561f297d804f3ec",
+      "bytes": 87712
+    },
+    {
+      "path": "media/sample-dogs.jpg",
+      "sha256": "945412632d0ed595c7df805456699339899190581b9d533c77375e4bb705e63c",
+      "bytes": 36526
+    },
+    {
+      "path": "media/sample-full-band.jpg",
+      "sha256": "9eb524c771722eb982dbe920ccb1f5c8ed53ba15c813883ff91969123a383a39",
+      "bytes": 63476
+    },
+    {
+      "path": "media/sample-new-lead.jpg",
+      "sha256": "c747a7f19044660533635e735056a9e3a8ef1da8f06325a4a63bb6bb9655b281",
+      "bytes": 36999
+    },
+    {
+      "path": "media/shot-band-dogs.jpg",
+      "sha256": "d5149b8d14912e76edb35ea8a857a18cb1fe66134df9918b2a0b6e0261a32b54",
+      "bytes": 31464
+    },
+    {
+      "path": "media/sample-dogs.mp4",
+      "sha256": "a2333f564b4c7c2b1bec8e0159bc2c0ed096fbc799d132ad3233fe0d80804416",
+      "bytes": 2100073
+    },
+    {
+      "path": "media/sample-full-band.mp4",
+      "sha256": "f8abe237b6d439fe76aaca269261e112912ad6ea940c83461f937e255d626d77",
+      "bytes": 1912278
+    },
+    {
+      "path": "media/shot-band.jpg",
+      "sha256": "859f4e874dd50cb1f0fc3516248ee410a657a11f8d316136e9cf366eae700d3c",
+      "bytes": 31282
+    },
+    {
+      "path": "media/shot-band2-dogs.jpg",
+      "sha256": "2e7def34bdd0f60e5a2e3b3962357b11b18ef56b747a6c0f5021c0621fdbc69c",
+      "bytes": 32116
+    },
+    {
+      "path": "media/shot-band-dogs.mp4",
+      "sha256": "17bd23721edf2bcb565d655a10b94105358fd7fd8ff11fef25568c9fb4d6c958",
+      "bytes": 407907
+    },
+    {
+      "path": "media/shot-band.mp4",
+      "sha256": "fba68c25d6368f070b73b9b95e467d7ac7d0389dd16d53eb317b336a74d6410b",
+      "bytes": 261163
+    },
+    {
+      "path": "media/shot-band2.jpg",
+      "sha256": "59391d3df4e19069a3ea877eec2e81b259f88e3a8d301856673b236e89e9141a",
+      "bytes": 30545
+    },
+    {
+      "path": "media/shot-band2.mp4",
+      "sha256": "3a5af7b060a4d439e119b89305751abfef49cf218787b944f1f420ae698d1928",
+      "bytes": 127030
+    },
+    {
+      "path": "media/shot-band2-dogs.mp4",
+      "sha256": "6ae418a6097eca30e59ab3b8c4603289b2a78538c997a479051b942060e47ba2",
+      "bytes": 196047
+    },
+    {
+      "path": "media/sample-new-lead.mp4",
+      "sha256": "e4880d262d7084575610d408321e40cf3ffb4806d66c15b1babf4f47a88371b6",
+      "bytes": 1955082
+    },
+    {
+      "path": "media/shot-lead-dogs.jpg",
+      "sha256": "54b1d0a34cf44d4579f9d1a5f5795c2575ba6225f0d286a4edb4315c42242956",
+      "bytes": 17459
+    },
+    {
+      "path": "media/shot-lead.jpg",
+      "sha256": "9b0c32b44435c1198c75971173defa46067def3c7b85cb515992eef31f5e61cb",
+      "bytes": 16722
+    },
+    {
+      "path": "media/shot-lead-dogs.mp4",
+      "sha256": "7d4827e6a00637922f935ab91b0241cbb6af938743ad57b244e451924cf3d0f5",
+      "bytes": 337668
+    },
+    {
+      "path": "media/shot-lead.mp4",
+      "sha256": "7e186f267766e9b63ac77f25308f1b3454da8cd88439ad8b46005bba830ee726",
+      "bytes": 230597
+    },
+    {
+      "path": "media/shot-sax.jpg",
+      "sha256": "4d39d9d3eed0815cdfee2619a53283fb62c180bd6d8026151bcfbc220d993137",
+      "bytes": 24575
+    },
+    {
+      "path": "media/shot-sax-dogs.jpg",
+      "sha256": "7536e7201e01c8595bec7796214b98f49b540899de96f8fc48d28c45b6f919a4",
+      "bytes": 22265
+    },
+    {
+      "path": "media/shot-sax-dogs.mp4",
+      "sha256": "192693e3c40a93748dd6e62cfe8bc57c204d34b432c9c4a9df38373e4a532fcc",
+      "bytes": 220318
+    },
+    {
+      "path": "media/stage-dogs.jpg",
+      "sha256": "4797d84f32f736ed0b0cd90ab54da53493f48e168c47c640ce0d92d0c91ff544",
+      "bytes": 111934
+    },
+    {
+      "path": "media/shot-sax.mp4",
+      "sha256": "e30398a150a33c88a9cf71a5d7dcef63b077d4b2616a2bc0ea6e7f2e520a0fbe",
+      "bytes": 148762
+    },
+    {
+      "path": "media/stage.jpg",
+      "sha256": "b7f665f2be622676ed4fd1e704ad4a9cc0a1c6148ce27e866bf3f8f787a72c28",
+      "bytes": 108129
+    },
+    {
+      "path": "media/stage-ours.jpg",
+      "sha256": "307d39693816e9f1f167483128622063ddb6ff79d97ea008980eecdbcb535804",
+      "bytes": 113145
+    },
+    {
+      "path": "media/viral-coaches.jpg",
+      "sha256": "497adff4885a24e83334d01c5973f4809af499e0ba11cfd1e466a7c0257782b7",
+      "bytes": 27339
+    },
+    {
+      "path": "media/viral-nfl.jpg",
+      "sha256": "70d6a57ef66869ed89e02de878e6c5de97793ec45300d26c8656d361abdc35d4",
+      "bytes": 36603
+    },
+    {
+      "path": "media/viral-warriors.jpg",
+      "sha256": "aedcc83e81b659b0366fa844b5665bfe0c1da74b1602353d77aae3364186941c",
+      "bytes": 50758
+    },
+    {
+      "path": "media/viral-coaches.mp4",
+      "sha256": "fb69dc7b070381282513b8b1287ad850038069044626ce715be5ee1ab70beb73",
+      "bytes": 1539040
+    },
+    {
+      "path": "media/viral-warriors.mp4",
+      "sha256": "084f976d647887aac5c5f9e87fa8194fe380549dcefbba6f489eb7cc954b69ed",
+      "bytes": 2090615
+    },
+    {
+      "path": "media/viral-nfl.mp4",
+      "sha256": "2eb55ee53dbe81cd83c19a55c69643122ce954b1fd5abc6146bba5964f8214cb",
+      "bytes": 1812220
+    }
+  ]
+}
