@@ -189,6 +189,8 @@ export class StripeProvider implements PaymentProvider {
     const session = await this.stripe.checkout.sessions.create(
       {
         mode: subscription ? 'subscription' : 'payment',
+        // This adapter uses standard Payments; account-level Managed Payments defaults must not change it.
+        managed_payments: { enabled: false },
         customer: request.customerRef,
         client_reference_id: request.orderId,
         line_items: [
