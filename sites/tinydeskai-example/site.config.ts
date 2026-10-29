@@ -4,9 +4,9 @@ import { defineSite } from '@shipwords/core/site';
 // All config for this site. Price amounts are in the smallest currency unit (cents). Never change ids after launch.
 // Same flow as competing sites: sign in, then buy, then generate. No guest trial and no sign-up bonus.
 export default defineSite({
-  id: 'tinydeskaiex',
+  id: 'tinydeskaigenerator',
   name: 'Tiny Desk AI',
-  url: 'https://tinydeskai.example.com',
+  url: 'https://tinydeskaigenerator.org',
   locales: ['en'],
   defaultLocale: 'en',
   // Same price for 1–5 people; one video = 10 credits. Each video costs about $3.06 upstream (Kling 4.0, 720p, one run).

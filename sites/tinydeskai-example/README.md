@@ -1,4 +1,55 @@
-# Tiny Desk AI (example)
+# Tiny Desk AI Generator
+
+## Deployment
+
+- Domain: `https://tinydeskaigenerator.org`
+- Worker: `tinydeskaigenerator`
+- D1: `tinydeskaigenerator-db`
+- R2: `tinydeskaigenerator-outputs`; objects under `uploads/` expire after two days.
+- Workflow: `tinydeskaigenerator-generation`
+- The public preview preserves the site pages. `src/site/launch.ts` keeps uploads, sign-up, generation and checkout unavailable until launch prerequisites are complete.
+- `APP_URL` and the sender address are set in `wrangler.jsonc`. The application signing secrets are configured in Cloudflare Secrets; generation, payment and email setup still need completion.
+- The local configuration includes the compose container and Durable Object binding. Publishing this configuration requires a running Docker engine to build the image. The live preview has not yet deployed the container. Add the email binding only after Email Sending is verified for the domain.
+- Public display media from `https://tinydeskai.io/media/` is stored under `public/media/` with matching filenames. It remains git-ignored, as in the original example. A separate public-only R2 bucket, `tinydeskaigenerator-public-media`, supplies clean builds through `media-manifest.json`; `pnpm build` restores the files and verifies sizes and SHA-256 hashes before bundling. User uploads and generated outputs stay in the separate `tinydeskaigenerator-outputs` bucket.
+- The public reference clip from `https://tinydeskai.io/files/assets/tinydesk/full-17s.mp4` is stored at `assets/tinydesk/full-17s.mp4` in R2. `assets/tinydesk/song.m4a` contains its extracted AAC audio, so `site.models.ts` uses `audioStart: 0`.
+
+Before enabling `LAUNCH_READY` in `src/site/launch.ts`, verify the media described below, configure the generation and payment secrets in Cloudflare, verify email delivery and the support inbox, deploy and verify the compose container, and test a complete generation and payment flow.
+
+The compose configuration from the example is:
+
+```json
+{
+  "containers": [
+    {
+      "class_name": "ComposeContainer",
+      "scheduling_policy": "durable_object",
+      "images": { "compose": { "dockerfile": "../../packages/jobs/compose/Dockerfile" } }
+    }
+  ],
+  "durable_objects": { "bindings": [{ "name": "COMPOSE", "class_name": "ComposeContainer" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ComposeContainer"] }],
+  "send_email": [{ "name": "EMAIL" }]
+}
+```
+
+Deploy from the repository's `main` branch with `pnpm --filter ./sites/tinydeskai-example check`, then `pnpm --filter ./sites/tinydeskai-example run deploy`. Keep real credentials out of the repository.
+
+### Cloudflare Workers Builds
+
+Use the existing Worker `tinydeskaigenerator` and repository `luxuryonline-dev/shipwords`:
+
+- Production branch: `main`.
+- Root directory: repository root (`/`), so workspace packages and the compose Dockerfile are included.
+- Node version: `24` (also declared in `.nvmrc`); pnpm version comes from `packageManager` in the root `package.json`.
+- Build command: `pnpm --filter ./sites/tinydeskai-example check`.
+- Deploy command: `pnpm --filter ./sites/tinydeskai-example exec wrangler deploy`.
+- Set build variable `NODE_VERSION=24`. Runtime secrets remain under the Worker's Variables and Secrets, not build variables.
+- The deployment credential must permit deployment of this Worker's resources, including Workflows, Containers and its R2/D1 bindings. Complete the Cloudflare GitHub connection and verify the first container build before enabling generation.
+- Keep non-production branch deployment disabled until a separate staging environment is configured.
+
+Workers Builds supplies Docker for the image build, so the developer's computer does not need Docker installed.
+
+## Original example
 
 - **What it is**: the source of [tinydeskai.io](https://tinydeskai.io/), a live shipwords site for the "Outstanding" Tiny Desk AI trend (put anyone into the band and get a 9:16 clip). Open-sourced as a complete example: fork it and launch your own version of the keyword.
 - **Not deployed from here.** tinydeskai.io is deployed from its own private config. Domain, resource names, IDs and the support email in this copy are placeholders.

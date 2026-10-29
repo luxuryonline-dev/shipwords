@@ -5,7 +5,7 @@ import { m } from '~/paraglide/messages.js';
 // The contact address forwards to the support inbox via Email Routing (README).
 // The policy date is common_legal_policy_date in messages/common; update both en and zh when a policy changes.
 
-export const SUPPORT_EMAIL = 'support@tinydeskai.example.com';
+export const SUPPORT_EMAIL = 'support@tinydeskaigenerator.org';
 
 export function LegalPage({ title, intro, children }: { title: string; intro: string; children: ReactNode }) {
   return (

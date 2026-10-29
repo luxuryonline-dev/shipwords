@@ -13,6 +13,7 @@ import { authClient } from '~/lib/auth';
 import { identify, track } from '~/lib/track';
 import { m } from '~/paraglide/messages.js';
 import { openAccount } from '~/site/account';
+import { LAUNCH_READY } from '~/site/launch';
 import { PhoneHandoff } from '~/site/phone-upload';
 import { photoTooSmall } from '~/site/photo-check';
 import { formatPrice, PricingLink } from '~/site/pricing';
@@ -527,8 +528,10 @@ export function TinyDeskTool({
       </label>
 
       <div className="hero-actions">
-        <button type="submit" className="primary" disabled={submitting || preparing}>
-          {submitting || preparing ? (
+        <button type="submit" className="primary" disabled={!LAUNCH_READY || submitting || preparing}>
+          {!LAUNCH_READY ? (
+            'Coming soon'
+          ) : submitting || preparing ? (
             m.common_tool_starting()
           ) : (
             <>

@@ -1,37 +1,35 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  // Example config: resource names, domain and IDs are placeholders. Create your own resources and fill them in before deploying.
-  "name": "tinydeskai-example",
+  "name": "tinydeskaigenerator",
+  "account_id": "a18a082313f9d93251d07fbacdfe60e1",
   "main": "src/server.ts",
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
   "upload_source_maps": true,
-  // Add your domain before deploying: "routes": [{ "pattern": "your-domain.com", "custom_domain": true }],
+  "routes": [{ "pattern": "tinydeskaigenerator.org", "custom_domain": true }],
   "vars": {
-    "EMAIL_FROM": "noreply@tinydeskai.example.com",
+    "APP_URL": "https://tinydeskaigenerator.org",
+    "EMAIL_FROM": "noreply@tinydeskaigenerator.org",
     // Rybbit collector URL, used only inside the Worker (/stats/* proxy); leave empty to disable.
     "RYBBIT_UPSTREAM": ""
   },
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "tinydeskai-example",
-      "database_id": "<set after wrangler d1 create>",
+      "database_name": "tinydeskaigenerator-db",
+      "database_id": "adc7a319-9c8f-47c5-a695-e6beebb72752",
       "migrations_dir": "migrations"
     }
   ],
-  "r2_buckets": [{ "binding": "OUTPUTS", "bucket_name": "tinydeskai-example-outputs" }],
-  "send_email": [{ "name": "EMAIL" }],
+  "r2_buckets": [{ "binding": "OUTPUTS", "bucket_name": "tinydeskaigenerator-outputs" }],
   "workflows": [
     {
-      "name": "tinydeskai-example-generation",
+      "name": "tinydeskaigenerator-generation",
       "binding": "GENERATION_WORKFLOW",
       "class_name": "GenerationWorkflow"
     }
   ],
-  // Effect compose container: ffmpeg image in packages/jobs/compose. Uses durable_object scheduling; the instance type
-  // (standard-3: 2 vCPU, 8 GiB; on standard-1's 1/2 vCPU the face check took 25–30 s and compose 60 s) is set in start() in server.ts.
   "containers": [
     {
       "class_name": "ComposeContainer",
@@ -43,6 +41,7 @@
     "bindings": [{ "name": "COMPOSE", "class_name": "ComposeContainer" }]
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ComposeContainer"] }],
+  // Add the EMAIL binding after verifying Email Sending for this domain.
   // Local dev neither builds nor runs the container (no Docker needed); with UPSTREAM_MOCK=1 the mock composer is used instead.
   "dev": { "enable_containers": false }
 }

@@ -5,6 +5,7 @@ import { type MouseEvent, type ReactNode, useEffect, useRef } from 'react';
 import { authClient } from '~/lib/auth';
 import { track } from '~/lib/track';
 import { m } from '~/paraglide/messages.js';
+import { LAUNCH_READY } from '~/site/launch';
 import { openSignIn } from '~/site/sign-in';
 import site from '../../site.config';
 
@@ -143,12 +144,14 @@ export function Plans({
               <button
                 type="button"
                 className={featured ? 'plan-buy primary' : 'plan-buy'}
-                disabled={pending !== null}
+                disabled={!LAUNCH_READY || pending !== null}
                 onClick={() => buy(product.id)}
               >
-                {pending === product.id
-                  ? m.common_plan_redirecting()
-                  : m.common_plan_buy({ name: packName(product) })}
+                {!LAUNCH_READY
+                  ? 'Coming soon'
+                  : pending === product.id
+                    ? m.common_plan_redirecting()
+                    : m.common_plan_buy({ name: packName(product) })}
               </button>
             </article>
           );

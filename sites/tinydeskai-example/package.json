@@ -4,15 +4,15 @@
   "type": "module",
   "scripts": {
     "dev": "node ../../tools/dev-port.mjs vite dev",
-    "build": "vite build",
+    "build": "node scripts/restore-media.mjs && vite build",
     "preview": "vite build --outDir .preview && node ../../tools/dev-port.mjs vite preview --outDir .preview",
     "typecheck": "paraglide-js compile --project ./project.inlang --outdir ./src/paraglide && tsr generate && wrangler types && tsc --noEmit",
-    "check": "pnpm typecheck && pnpm build && node ../../tools/check-site.mjs .",
+    "check": "node --test scripts/restore-media.test.mjs && pnpm typecheck && pnpm build && node ../../tools/check-site.mjs .",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
-    "deploy": "vite build && wrangler deploy",
-    "deploy:preview": "vite build && wrangler versions upload"
+    "deploy": "pnpm build && wrangler deploy",
+    "deploy:preview": "pnpm build && wrangler versions upload"
   },
   "dependencies": {
     "@cloudflare/containers": "0.3.7",

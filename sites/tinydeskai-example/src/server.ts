@@ -3,6 +3,7 @@ import { proxyRybbit } from '@shipwords/core/analytics';
 import { defineGenerationWorkflow } from '@shipwords/jobs/workflow';
 import handler from '@tanstack/react-start/server-entry';
 import { paraglideMiddleware } from '~/paraglide/server.js';
+import { LAUNCH_READY, PREVIEW_NOTICE } from '~/site/launch';
 import site from '../site.config';
 import models from '../site.models';
 
@@ -31,6 +32,13 @@ export class ComposeContainer extends Container {
 
 export default {
   async fetch(request, env) {
+    // The public preview accepts no uploads, sign-ups, purchases or generation jobs.
+    const path = new URL(request.url).pathname;
+    if (!LAUNCH_READY && path.startsWith('/api/')) {
+      if (request.method === 'GET' && path === '/api/auth/get-session') return Response.json(null);
+      if (request.method === 'GET' && /^\/api\/jobs\/?$/.test(path)) return Response.json({ jobs: [] });
+      return Response.json({ error: { code: 'preview_only', message: PREVIEW_NOTICE } }, { status: 503 });
+    }
     // Rybbit stats go through /stats/ on this site and are forwarded to the collector here.
     const stats = await proxyRybbit(request, env.RYBBIT_UPSTREAM);
     if (stats) return stats;
