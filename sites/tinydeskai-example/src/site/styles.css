@@ -978,7 +978,7 @@ button:disabled {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: url("/media/stage-ours.jpg") center / cover no-repeat;
+  background: url("/media/stage-ours-n.jpg") center / cover no-repeat;
   opacity: 0;
   transition: opacity 0.35s ease;
   pointer-events: none;

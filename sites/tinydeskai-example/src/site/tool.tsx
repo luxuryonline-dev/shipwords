@@ -32,7 +32,7 @@ const PRICE = PRODUCT ? formatPrice(PRODUCT) : '';
 
 /**
  * The stage image public/media/stage.jpg is three frames of the viral clip (left: band at 16.8 s, top right: lead at 9.8 s, bottom right: sax at 14.9 s), 1020×960.
- * stage-ours.jpg is the hero output at the same moments (the output starts at 1.375 s of the original, so each minus 1.375) with the same scale and crop; the slot coordinates fit both images.
+ * stage-ours-n.jpg is the replacement output collage; OUR_SEATS matches its new face centers.
  * x and y are each face center as a percent of stage width and height; size is the slot diameter as a percent of stage width. Remeasure if the image changes.
  * stage-dogs.jpg is the dog output cut the same way, except the band frame is at 15.1 s (at 15.425 s the golden retriever raises what looks like a human hand); faces sit in the same places.
  * edge: the face touches the stage's left edge, so the name label is left-aligned and not clipped on narrow screens.
@@ -53,6 +53,16 @@ const SEATS: Record<
   keys: { x: 20.6, y: 47.4, size: 9, label: m.common_slot_keys, short: m.common_seat_keys },
   lead: { x: 77.5, y: 28.5, size: 18, label: m.common_slot_lead, short: m.common_seat_lead },
   sax: { x: 77, y: 71, size: 13, label: m.common_slot_sax, short: m.common_seat_sax },
+};
+
+// The replacement "Our cut" collage has different face centers; other stage views keep SEATS.
+const OUR_SEATS: typeof SEATS = {
+  ...SEATS,
+  backLeft: { ...SEATS.backLeft!, x: 5.3, y: 22.3 },
+  backRight: { ...SEATS.backRight!, x: 43.8, y: 25.3 },
+  keys: { ...SEATS.keys!, x: 27.2, y: 51.4 },
+  lead: { ...SEATS.lead!, x: 80.2, y: 26 },
+  sax: { ...SEATS.sax!, x: 72.1, y: 73.5 },
 };
 
 const PRESETS = [
@@ -111,9 +121,10 @@ export function TinyDeskTool({
   stage = 'viral',
 }: {
   generation: ReturnType<typeof useGeneration>;
-  /** The stage image follows the hero sample: coaches for the original, the swapped-in faces for our output (stage-ours.jpg), five dogs for the dog version (stage-dogs.jpg); all three share the slot coordinates. */
+  /** The stage follows the hero sample. Original and Dogs use SEATS; the replacement Our cut collage uses OUR_SEATS. */
   stage?: 'viral' | 'ours' | 'dogs';
 }) {
+  const seats = stage === 'ours' ? OUR_SEATS : SEATS;
   const config = root.useLoaderData();
   const auth = authClient(config.googleClientId);
   const session = auth.useSession();
@@ -242,7 +253,7 @@ export function TinyDeskTool({
     let best: string | null = null;
     let bestDistance = Number.POSITIVE_INFINITY;
     for (const slot of SLOTS) {
-      const seat = SEATS[slot.id]!;
+      const seat = seats[slot.id]!;
       const distance = Math.hypot(x - (seat.x / 100) * width, y - (seat.y / 100) * height);
       // Face slots have a 2.6rem minimum width; on narrow screens the radius uses that floor.
       const radius = Math.max((seat.size / 100) * width, 41.6) / 2;
@@ -434,7 +445,7 @@ export function TinyDeskTool({
       >
         <legend className="sr-only">{m.common_tool_legend()}</legend>
         {SLOTS.map((slot) => {
-          const seat = SEATS[slot.id]!;
+          const seat = seats[slot.id]!;
           const photo = photos[slot.id];
           const member = seat.label();
           // × on your own photo puts this slot's dog back; × on a dog clears it and keeps the original coach.
