@@ -225,7 +225,7 @@ const HERO_CLIPS = {
     note: m.home_viral_coaches_note,
   },
   ours: {
-    clip: 'sample-full-band',
+    clip: 'sample-full-band-n',
     tab: m.home_hero_tab_ours,
     tag: m.home_ours_band_tag,
     label: m.home_ours_band_label,
