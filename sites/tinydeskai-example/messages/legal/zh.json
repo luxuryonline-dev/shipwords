@@ -92,5 +92,11 @@
   "legal_dmca_counter_heading": "反通知",
   "legal_dmca_counter_body": "如果你的内容被误删，回复一份反通知：被删的内容、在伪证罪处罚下声明其系误删、你的联系方式、同意接受你当地联邦法院管辖，以及你的签名。我们会转给发出通知的人。",
   "legal_dmca_repeat_heading": "重复侵权者",
-  "legal_dmca_repeat_body": "持续上传无权使用内容的账户会被关闭。"
+  "legal_dmca_repeat_body": "持续上传无权使用内容的账户会被关闭。",
+  "legal_dmca_official_guidance": "美国版权局：通知和反通知要求",
+  "legal_on_this_page": "本页目录",
+  "legal_navigation_title": "相关帮助与政策",
+  "legal_generator_link": "返回视频生成器",
+  "legal_faq_link": "照片、生成与下载常见问题",
+  "legal_request_safety": "联系客服时，请勿发送密码、登录验证码或完整银行卡号。"
 }
