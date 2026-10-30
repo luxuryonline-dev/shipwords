@@ -72,9 +72,12 @@ const STEPS = [
 ];
 
 // FAQ in our own words, covering the follow-ups ChatGPT asked in tests: price, number of photos, model, wait time, CapCut, whether it can be posted, whether it is real.
-const FAQ: { q: () => string; a: () => string }[] = [
+const FAQ: { q: () => string; a: () => string; help?: { href: string; label: () => string } }[] = [
   { q: m.home_faq_what_q, a: () => m.home_faq_what_a({ name: site.name }) },
   { q: m.home_faq_people_q, a: m.home_faq_people_a },
+  { q: m.home_faq_controls_q, a: m.home_faq_controls_a },
+  { q: m.home_faq_move_q, a: m.home_faq_move_a },
+  { q: m.home_faq_phone_q, a: m.home_faq_phone_a },
   {
     q: m.home_faq_cost_q,
     a: () =>
@@ -89,9 +92,21 @@ const FAQ: { q: () => string; a: () => string }[] = [
   { q: m.home_faq_photo_q, a: m.home_faq_photo_a },
   { q: m.home_faq_celebrity_q, a: m.home_faq_celebrity_a },
   { q: m.home_faq_real_q, a: m.home_faq_real_a },
-  { q: m.home_faq_post_q, a: m.home_faq_post_a },
-  { q: m.home_faq_fail_q, a: m.home_faq_fail_a },
-  { q: m.home_faq_photos_q, a: m.home_faq_photos_a },
+  {
+    q: m.home_faq_post_q,
+    a: m.home_faq_post_a,
+    help: { href: '/terms#sharing', label: m.home_faq_terms_link },
+  },
+  {
+    q: m.home_faq_fail_q,
+    a: m.home_faq_fail_a,
+    help: { href: '/refunds#failed-renders', label: m.home_faq_refund_policy_link },
+  },
+  {
+    q: m.home_faq_photos_q,
+    a: m.home_faq_photos_a,
+    help: { href: '/privacy#retention', label: m.home_faq_photo_policy_link },
+  },
   { q: m.home_faq_npr_q, a: () => m.home_faq_npr_a({ name: site.name }) },
 ];
 
@@ -380,6 +395,11 @@ function HomePage() {
           <details key={item.q()}>
             <summary>{item.q()}</summary>
             <p>{item.a()}</p>
+            {item.help && (
+              <p>
+                <a href={item.help.href}>{item.help.label()}</a>
+              </p>
+            )}
           </details>
         ))}
       </section>

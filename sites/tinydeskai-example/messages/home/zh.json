@@ -113,5 +113,14 @@
   "home_faq_title": "Tiny Desk AI 常见问题",
   "home_closer_title": "谁来当主唱？",
   "home_closer_text": "换一个人，或者整支乐队。{price}，含歌曲",
-  "home_closer_cta": "选好你的 Tiny Desk 乐队"
+  "home_closer_cta": "选好你的 Tiny Desk 乐队",
+  "home_faq_controls_q": "怎样恢复默认狗狗或保留原表演者？",
+  "home_faq_controls_a": "在上传照片上点击 × 会恢复该位置的默认狗狗；在狗狗上点击 × 会取消替换，保留原视频中的表演者。点击脸部可重新选择照片，生成前请检查各位置。",
+  "home_faq_move_q": "能把上传的人脸移到其他角色吗？",
+  "home_faq_move_a": "可以。把已分配的照片拖到其他脸部位置：空位置会接收照片，已有照片的位置会交换分配。电脑端也可直接把图片文件拖到角色上。",
+  "home_faq_phone_q": "照片在手机里，必须先发到电脑吗？",
+  "home_faq_phone_a": "不必。在电脑端打开舞台下的手机扫码上传入口，用手机扫描二维码后选择照片即可传到当前舞台。如需继续发送，请保持手机上传页打开；二维码过期后可重新生成。",
+  "home_faq_photo_policy_link": "查看照片隐私政策",
+  "home_faq_refund_policy_link": "查看积分返还与退款规则",
+  "home_faq_terms_link": "查看视频分享条款"
 }
