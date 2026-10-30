@@ -6,9 +6,10 @@ import { eq } from 'drizzle-orm';
 import { grantCredits } from '../credits/ledger';
 import type { Db } from '../db/client';
 import * as schema from '../db/schema';
+import { emailCopy } from '../email/copy';
 import type { CoreEnv } from '../env';
 import { clientIp, ipBucket } from '../http';
-import { consumeQuota, dayWindow } from '../quota/counters';
+import { consumeQuota, dayWindow, type QuotaRule, releaseQuota } from '../quota/counters';
 import type { SiteConfig } from '../site';
 import { isDisposableEmail } from './disposable';
 
@@ -46,9 +47,13 @@ function readAttribution(headers: Headers | undefined) {
   }
 }
 
-/** Sign-up bonus: verified emails only, capped per IP per day, once per user. */
-async function grantSignupBonus(deps: AuthDeps, userId: string, headers: Headers | undefined) {
-  const { bonusCredits, bonusExpiresDays, bonusPerIpDaily } = deps.site.signup;
+/** Sign-up bonus: verified emails only, once per user, capped per IP and site-wide per day. */
+export async function grantSignupBonus(
+  deps: Pick<AuthDeps, 'db' | 'site' | 'log'>,
+  userId: string,
+  headers: Headers | undefined,
+) {
+  const { bonusCredits, bonusExpiresDays, bonusPerIpDaily, bonusSiteDaily } = deps.site.signup;
   if (bonusCredits <= 0) return;
   const idemKey = `signup:${userId}`;
   const already = await deps.db.query.creditLedger.findFirst({
@@ -56,22 +61,25 @@ async function grantSignupBonus(deps: AuthDeps, userId: string, headers: Headers
   });
   if (already) return;
   const ip = headers ? clientIp(headers) : null;
-  if (ip) {
-    const ok = await consumeQuota(deps.db, [
-      { key: `signup-bonus:ip:${ipBucket(ip)}`, window: dayWindow(), limit: bonusPerIpDaily },
-    ]);
-    if (!ok) {
-      deps.log('signup bonus skipped: ip limit', { userId });
-      return;
-    }
+  const window = dayWindow();
+  // The per-IP cap stops casual repeats; the site-wide cap bounds the cost of farming with fresh emails and rotating IPs.
+  const rules: QuotaRule[] = [
+    ...(ip ? [{ key: `signup-bonus:ip:${ipBucket(ip)}`, window, limit: bonusPerIpDaily }] : []),
+    { key: 'signup-bonus:site', window, limit: bonusSiteDaily },
+  ];
+  if (!(await consumeQuota(deps.db, rules))) {
+    deps.log('signup bonus skipped: daily limit', { userId });
+    return;
   }
-  await grantCredits(deps.db, {
+  const result = await grantCredits(deps.db, {
     userId,
     amount: bonusCredits,
     idemKey,
     source: 'signup',
     expiresAt: bonusExpiresDays == null ? null : Date.now() + bonusExpiresDays * DAY,
   });
+  // A concurrent hook for the same user got there first; give back the slots this attempt counted.
+  if (!result.applied) await releaseQuota(deps.db, rules);
 }
 
 // Without a secret Better Auth silently falls back to a public default (it only refuses when NODE_ENV=production, which Workers never set),
@@ -128,9 +136,7 @@ export function createAuth(deps: AuthDeps) {
           await env.EMAIL.send({
             to: email,
             from: { email: env.EMAIL_FROM, name: site.name },
-            subject: `${otp} is your ${site.name} code`,
-            text: `Your ${site.name} sign-in code is ${otp}. It expires in 10 minutes.`,
-            html: `<p>Your ${site.name} sign-in code is <strong style="font-size:20px">${otp}</strong>.</p><p>It expires in 10 minutes.</p>`,
+            ...emailCopy(site.defaultLocale).signInCode({ siteName: site.name, otp }),
           });
         },
       }),

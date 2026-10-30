@@ -11,7 +11,8 @@ export interface PublicJob {
   prompt: string;
   costCredits: number;
   outputs: { url: string; mediaType: string }[];
-  error: { code: string; message: string | null } | null;
+  /** Failure code only; sites show their own copy for failed jobs. */
+  error: { code: string } | null;
   createdAt: number;
   finishedAt: number | null;
 }
@@ -20,6 +21,8 @@ export interface GenerateInput {
   modelId: string;
   /** Required for regular models; effects don't accept a prompt. */
   prompt?: string;
+  /** Music models: the user's lyrics; without them the model writes lyrics from the prompt (or makes an instrumental). */
+  lyrics?: string;
   references?: string[];
   parameters?: Record<string, unknown>;
   /** Effects: slot ID → path returned by uploadReference. */
@@ -125,8 +128,14 @@ export function useGeneration(options: { recaptchaSiteKey: string | null }) {
 
   const cancel = useCallback(
     async (jobId: string) => {
-      const { job } = await postJson<{ job: PublicJob | null }>(`/api/jobs/${jobId}/cancel`, {});
-      if (job) upsert(job);
+      try {
+        const { job } = await postJson<{ job: PublicJob | null }>(`/api/jobs/${jobId}/cancel`, {});
+        if (job) upsert(job);
+      } catch (e) {
+        // The upstream got the job between two polls: it keeps going and delivers, and the next poll shows it running.
+        if (e instanceof ApiError && e.code === 'job_started') return;
+        setError(e instanceof ApiError ? e : new ApiError(String(e), undefined, 0, {}));
+      }
     },
     [upsert],
   );

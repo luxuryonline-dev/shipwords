@@ -25,7 +25,7 @@ import models from '../../site.models';
 // × on your photo puts the dog back, × on a dog keeps the original coach. At least 1 photo of your own; same price for 1–5 people. Sign in (Google One Tap), then buy credits; no free trial. Design: DESIGN.md "Upload area".
 
 const MODEL = models[0];
-const SLOTS = MODEL.effect?.slots ?? [];
+const SLOTS = MODEL.effect.slots;
 const PRODUCT = site.products.find((p) => p.kind === 'credits' && p.credits === MODEL.credits);
 const PRICE = PRODUCT ? formatPrice(PRODUCT) : '';
 

@@ -7,6 +7,7 @@ import type { Core } from '@shipwords/core/server';
 import { and, desc, eq, isNull } from 'drizzle-orm';
 import { imageSize } from './image-size';
 import {
+  cancelQueued,
   claimGuestJobs,
   loadJob,
   markFailed,
@@ -16,7 +17,15 @@ import {
   spendKey,
   upstreamIds,
 } from './lifecycle';
-import { creditsFor, effectParts, type ModelDefinition, referenceRoleOf, sanitizeParameters } from './models';
+import {
+  creditsFor,
+  effectParts,
+  MAX_LYRICS,
+  type ModelDefinition,
+  musicParameters,
+  referenceRoleOf,
+  sanitizeParameters,
+} from './models';
 import { type JobRow, jobs } from './schema';
 import { createAdapters, type JobsEnv } from './workflow';
 
@@ -34,6 +43,8 @@ interface CreateBody {
   /** Reference images: site file paths (/files/uploads/...) obtained from the upload endpoint first. */
   references?: string[];
   parameters?: Record<string, unknown>;
+  /** Music models: song lyrics; omit to have the model write them (or for an instrumental). */
+  lyrics?: string;
   /** Effects: slot ID → site path returned by the upload endpoint. */
   slots?: Record<string, unknown>;
   recaptchaToken?: string;
@@ -51,7 +62,8 @@ export function publicJob(job: JobRow, baseURL: string) {
       url: `${baseURL}/files/${output.key}`,
       mediaType: output.mediaType,
     })),
-    error: job.errorCode ? { code: job.errorCode, message: job.errorMessage } : null,
+    // Code only: the stored message holds internal detail (exceptions, upstream replies, check scores) and stays in the database and logs.
+    error: job.errorCode ? { code: job.errorCode } : null,
     createdAt: job.createdAt,
     finishedAt: job.finishedAt,
   };
@@ -162,7 +174,17 @@ export function createJobs(core: Core, models: readonly ModelDefinition[]) {
         if (!references) return errorResponse(400, 'invalid_references');
         parameters = sanitizeParameters(model, body.parameters);
         const role = referenceRoleOf(model);
-        inputJson = JSON.stringify({ references: references.map((url) => ({ url, role })), parameters });
+        const input = { references: references.map((url) => ({ url, role })), parameters };
+        if (model.kind === 'music') {
+          if (body.lyrics !== undefined && typeof body.lyrics !== 'string')
+            return errorResponse(400, 'invalid_lyrics');
+          const lyrics = body.lyrics?.trim() || undefined;
+          if (lyrics && lyrics.length > MAX_LYRICS) return errorResponse(400, 'invalid_lyrics');
+          parameters = musicParameters(parameters, lyrics);
+          inputJson = JSON.stringify({ ...input, parameters, ...(lyrics ? { lyrics } : {}) });
+        } else {
+          inputJson = JSON.stringify(input);
+        }
       }
       const jobId = newId('job');
       const user = await core.getUser(request);
@@ -253,16 +275,15 @@ export function createJobs(core: Core, models: readonly ModelDefinition[]) {
       return json({ jobs: healed.map((row) => publicJob(row, baseURL())) });
     },
 
-    /** POST /api/jobs/<id>/cancel */
+    /** POST /api/jobs/<id>/cancel: only before the job reaches the upstream; after that it keeps going and delivers (409 job_started). */
     async cancel(request: Request, jobId: string): Promise<Response> {
       const job = await ownedJob(request, jobId);
       if (!job) return errorResponse(404, 'job_not_found');
-      const updated = await markFailed(core.db, jobId, 'canceled', 'canceled', 'canceled by user');
+      const updated = await cancelQueued(core.db, jobId);
+      if (updated?.status === 'submitted') return errorResponse(409, 'job_started');
       if (updated?.status === 'canceled') {
-        await env()
-          .GENERATION_WORKFLOW.get(jobId)
-          .then((instance) => instance.terminate())
-          .catch(() => undefined);
+        // The Workflow is not terminated: it may be inside the first submit, the upstream already holding the task. Left running, it sees
+        // the job canceled, cancels the task it just submitted and stops; a Workflow that hasn't started yet stops at its first step.
         // createAdapters throws when the mock is misconfigured; nothing real was submitted then, so there is nothing to cancel.
         const adapter = (() => {
           try {

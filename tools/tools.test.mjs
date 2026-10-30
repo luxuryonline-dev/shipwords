@@ -5,10 +5,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import { checkCrawl, inspectHtml } from './check-crawl.mjs';
-import { checkSite } from './check-site.mjs';
-import { isWorktree, portFor } from './dev-port.mjs';
+import { checkSite, devVars, stringLiterals } from './check-site.mjs';
+import { isWorktree, portFor, sitePort } from './dev-port.mjs';
 import { readSiteConfig, readStatus, setVar, TOOLS_ROOT } from './lib.mjs';
-import { createSite, parseArgs, validateSlug } from './new-site.mjs';
+import { createSite, nextDevPort, parseArgs, validateSlug } from './new-site.mjs';
 import { listenArgs, parseVars } from './stripe-listen.mjs';
 
 const crawlHtml = `<html><head><title>Photo studio</title><meta content="Make a video" name="description"><link href="https://example.com" rel="canonical"></head><body><h1>Photo studio</h1><p>One photo. $9.98.</p><script type="application/ld+json">{"@type":"VideoObject","uploadDate":"2026-10-27T15:02:46Z"}</script></body></html>`;
@@ -74,14 +74,15 @@ test('crawl: bounded UA matrix detects challenge, redirect and foreign sitemap',
   await assert.rejects(checkCrawl('https://example.com/path', [], fakeFetch), /HTTPS origin/);
 });
 
-test('dev port: main checkout keyed by site name, worktrees by path', () => {
-  assert.equal(portFor('/a/shipwords/sites/x', false), portFor('/b/elsewhere/sites/x', false));
-  assert.notEqual(portFor('/a/shipwords/sites/x', false), portFor('/a/shipwords/sites/y', false));
-  assert.equal(portFor('/a/wt1/sites/x', true), portFor('/a/wt1/sites/x', true));
-  assert.notEqual(portFor('/a/wt1/sites/x', true), portFor('/a/wt2/sites/x', true));
+test('dev port: main checkout uses the site devPort, worktrees add 1-9 by path', () => {
+  assert.equal(portFor('/a/sites/x', false, 5110), 5110);
+  assert.equal(portFor('/a/wt1/sites/x', true, 5110), portFor('/a/wt1/sites/x', true, 5110));
+  const worktreePorts = ['wt1', 'wt2', 'wt3', 'wt4'].map((wt) => portFor(`/a/${wt}/sites/x`, true, 5110));
+  assert.ok(worktreePorts.every((port) => port > 5110 && port < 5120));
+  assert.ok(new Set(worktreePorts).size > 1);
   assert.equal(isWorktree(TOOLS_ROOT), fs.statSync(path.join(TOOLS_ROOT, '.git')).isFile());
-  const port = portFor('/any', false);
-  assert.ok(port >= 5200 && port < 7200);
+  assert.equal(sitePort(path.join(TOOLS_ROOT, 'templates', 'ai-site')), 5010);
+  assert.throws(() => sitePort(TOOLS_ROOT), /no devPort/);
 });
 
 test('setVar replaces an existing var or appends it', () => {
@@ -164,6 +165,16 @@ test('new site: renames, writes README, check-site finds unfinished items', () =
     'messages/legal/en.json still has TODO placeholders (policy text or update date)',
     'messages/common/en.json still has TODO placeholders (policy text or update date)',
   ]);
+  // A site whose only locale is not English is held to the same rule.
+  fs.renameSync(
+    path.join(target, 'messages', 'legal', 'en.json'),
+    path.join(target, 'messages', 'legal', 'ja.json'),
+  );
+  assert.ok(
+    checkSite(target).includes(
+      'messages/legal/ja.json still has TODO placeholders (policy text or update date)',
+    ),
+  );
   fs.rmSync(path.join(target, 'src', 'routes', 'dmca.tsx'));
   fs.writeFileSync(
     path.join(target, 'src', 'site', 'legal.tsx'),
@@ -174,6 +185,8 @@ test('new site: renames, writes README, check-site finds unfinished items', () =
   assert.ok(problems.includes('src/site/legal.tsx SUPPORT_EMAIL is still a placeholder'));
   fs.writeFileSync(path.join(target, 'src', 'bad.ts'), "import x from '../../sites/other/src/x';\n");
   assert.ok(checkSite(target).some((p) => p.includes('imports another site')));
+  fs.rmSync(path.join(target, 'src', 'models.server.ts'));
+  assert.ok(checkSite(target).includes('Missing src/models.server.ts'));
   assert.throws(() => createSite(root, { slug: 'ghibli-photo', template: 'ai-site' }), /already exists/);
   fs.rmSync(root, { recursive: true, force: true });
 });
@@ -203,6 +216,83 @@ test('check-site: fails when the browser bundle contains zh messages', () => {
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
+test('check-site: string scanner reads strings inside template interpolations, and .dev.vars is read as dotenv', () => {
+  const source = [
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: source text containing template literals
+    'const p = (dog) => `${dog ? "Replace the singer with the dog" : `keep ${"the original coach"}`} now`;',
+    "const o = { a: { b: 'after nested braces' } }; // it's a comment",
+    "const u = 'https://example.com/x';",
+  ].join('\n');
+  assert.deepEqual(
+    stringLiterals(source).filter((s) => s.trim()),
+    [
+      'Replace the singer with the dog',
+      'keep ',
+      'the original coach',
+      ' now',
+      'after nested braces',
+      'https://example.com/x',
+    ],
+  );
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shipwords-'));
+  fs.writeFileSync(
+    path.join(dir, '.dev.vars'),
+    [
+      'export YIR_API_KEY="fake-secret-key-123456"',
+      'STRIPE_SECRET_KEY=sk_test_abcdefgh # local test',
+      "GOOGLE_CLIENT_SECRET='has # inside quotes'",
+      '# COMMENTED=not-a-value-at-all',
+      'SHORT=abc',
+    ].join('\r\n'),
+  );
+  assert.deepEqual(devVars(dir), [
+    ['YIR_API_KEY', 'fake-secret-key-123456'],
+    ['STRIPE_SECRET_KEY', 'sk_test_abcdefgh'],
+    ['GOOGLE_CLIENT_SECRET', 'has # inside quotes'],
+  ]);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('check-site: fails when the browser bundle contains server-only text or .dev.vars secrets', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shipwords-'));
+  fs.mkdirSync(path.join(dir, 'src'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'dist', 'client'), { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, 'src', 'models.server.ts'),
+    [
+      "// Don't ship this: the comment's quotes are not strings, nor is 'https://x' in a comment.",
+      "const clip = 'assets/demo/reference-clip.mp4';",
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: source text containing a template literal
+      'const prompt = (who: string) => `Replace ${who} with the person in @image_1, keep the motion.`;',
+      'const short = "keep it";',
+    ].join('\n'),
+  );
+  fs.writeFileSync(
+    path.join(dir, '.dev.vars'),
+    'APP_URL=http://127.0.0.1:5173\nSTRIPE_SECRET_KEY="sk_test_0123456789"\nRECAPTCHA_SITE_KEY=6Lpublic-site-key\n',
+  );
+  const leaks = () => checkSite(dir).filter((p) => p.startsWith('Build output'));
+  fs.writeFileSync(
+    path.join(dir, 'dist', 'client', 'a.js'),
+    'fetch("http://127.0.0.1:5173");const k="6Lpublic-site-key";const s="keep it";',
+  );
+  assert.deepEqual(leaks(), []);
+  fs.writeFileSync(
+    path.join(dir, 'dist', 'client', 'b.js'),
+    'const p=`x with the person in @image_1, keep the motion.`;',
+  );
+  fs.writeFileSync(
+    path.join(dir, 'dist', 'client', 'c.js'),
+    "const v='assets/demo/reference-clip.mp4',k='sk_test_0123456789';",
+  );
+  assert.deepEqual(leaks(), [
+    'Build output dist/client/b.js contains server-only text from src/models.server.ts (" with the person in @image_1, keep the m…"); keep it out of files that pages import',
+    'Build output dist/client/c.js contains server-only text from src/models.server.ts ("assets/demo/reference-clip.mp4…"); keep it out of files that pages import',
+    'Build output dist/client/c.js contains the value of STRIPE_SECRET_KEY from .dev.vars',
+  ]);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
 test('new site from a vendored shipwords: site lands in the workspace, scripts point at vendored tools', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'shipwords-host-'));
   const { target } = createSite(root, { slug: 'demo-tool', template: 'ai-site', templatesRoot: TOOLS_ROOT });
@@ -211,6 +301,7 @@ test('new site from a vendored shipwords: site lands in the workspace, scripts p
   const toolsDir = path.relative(target, path.join(TOOLS_ROOT, 'tools')).replaceAll(path.sep, '/');
   assert.ok(pkg.scripts.dev.includes(`node ${toolsDir}/dev-port.mjs`));
   assert.ok(!pkg.scripts.check.includes('../../tools/'));
+  assert.ok(pkg.scripts.deploy.includes(`node ${toolsDir}/check-site.mjs . && wrangler deploy`));
   const drizzle = fs.readFileSync(path.join(target, 'drizzle.config.ts'), 'utf8');
   const packagesDir = path.relative(target, path.join(TOOLS_ROOT, 'packages')).replaceAll(path.sep, '/');
   assert.ok(drizzle.includes(`'${packagesDir}/core/src/db/schema.ts'`));
@@ -219,4 +310,21 @@ test('new site from a vendored shipwords: site lands in the workspace, scripts p
 
 test('the template itself passes check-site', () => {
   assert.deepEqual(checkSite(path.join(TOOLS_ROOT, 'templates', 'ai-site')), []);
+});
+
+test('new site: dev ports are 10 apart from 5110', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'shipwords-ports-'));
+  assert.equal(nextDevPort(root), 5110);
+  assert.equal(
+    createSite(root, { slug: 'one-tool', template: 'ai-site', templatesRoot: TOOLS_ROOT }).devPort,
+    5110,
+  );
+  const { target, devPort } = createSite(root, {
+    slug: 'two-tool',
+    template: 'ai-site',
+    templatesRoot: TOOLS_ROOT,
+  });
+  assert.equal(devPort, 5120);
+  assert.equal(sitePort(target), 5120);
+  fs.rmSync(root, { recursive: true, force: true });
 });

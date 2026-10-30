@@ -1,11 +1,13 @@
-// Sites declare available models in site.models.ts: public ID, upstream model, credit price, whether guests can try it.
-// Prices are defined only here; frontend display and server-side charging read the same source.
+// Each site declares its models in two files. site.models.ts (definePublicModels) holds what pages show: ID, name, credit price,
+// guest eligibility, inputs; pages import it, so it ships to the browser. src/models.server.ts (serverModels) adds the upstream model,
+// cost cap, timeout and effect presets by ID. Prices are defined only in site.models.ts; display and charging read the same source.
 
 export interface ModelDefinition {
   /** The site's model ID, used in URLs and requests. */
   id: string;
   name: string;
-  kind: 'image' | 'video';
+  /** music: style prompt plus optional lyrics in, songs out; no references and no effect. */
+  kind: 'image' | 'video' | 'music';
   upstream: 'yir';
   upstreamModel: string;
   /** Credits charged per job; pass a function for parameter-based pricing. */
@@ -82,7 +84,8 @@ export interface EffectSegment {
   check?: EffectCheck;
   /**
    * Repair (needs check and cuts, and compose with this as the only segment): when the check still finds original people, re-render the shots
-   * they appear in with a video replace model instead of refunding, then check again; after `rounds` passes the job fails with a refund.
+   * they appear in with a video replace model instead of refunding, then check again; after `rounds` passes the job fails with a refund,
+   * or delivers the best version when `onMiss` is 'deliver'.
    */
   repair?: EffectRepair;
 }
@@ -100,6 +103,12 @@ export interface EffectRepair {
   maxCost: string;
   /** Most passes per job (1–5); every pass counts toward the model's maxCost. */
   rounds: number;
+  /**
+   * When the passes can't replace everyone (they run out, the model rejects or fails one, or no pass covers a missed slot):
+   * 'refund' (default) fails the job swap_not_applied with a refund; 'deliver' delivers the version with the fewest missed people
+   * and keeps the credits, for sites that stop refunding once the paid render has been charged.
+   */
+  onMiss?: 'refund' | 'deliver';
   /** Slots visible in each shot, one entry per shot (cuts split the segment into cuts.length + 1 shots); a pass on a slot covers every shot it is in. */
   shots: readonly (readonly string[])[];
   /**
@@ -167,9 +176,112 @@ export function defineModels<const T extends readonly ModelDefinition[]>(models:
   for (const model of models) {
     if (ids.has(model.id)) throw new Error(`duplicate model id: ${model.id}`);
     ids.add(model.id);
+    if (model.kind === 'music' && (model.effect || model.maxReferences !== 0))
+      throw new Error(`model ${model.id}: music models take no references and no effect`);
     if (model.effect) validateEffect(model, model.effect);
   }
   return models;
+}
+
+/** An effect slot as the browser sees it: no prep prompt. */
+export type PublicSlot = Omit<EffectSlot, 'prep'>;
+
+const PUBLIC_KEYS = [
+  'id',
+  'name',
+  'kind',
+  'credits',
+  'guest',
+  'allowedParameters',
+  'defaults',
+  'maxReferences',
+  'effect',
+] as const;
+const PUBLIC_SLOT_KEYS: readonly string[] = ['id', 'label', 'required'];
+
+/** What the browser may know about a model: name, price and inputs. site.models.ts holds only this, since pages import it. */
+export type PublicModel = Pick<ModelDefinition, Exclude<(typeof PUBLIC_KEYS)[number], 'effect'>> & {
+  effect?: { slots: readonly PublicSlot[] };
+};
+
+/** Effect presets for src/models.server.ts. slots may be repeated (same ids, same order) to add prep prompts. */
+export type ServerEffect = Omit<EffectSpec, 'slots'> & { slots?: readonly EffectSlot[] };
+
+/** The server-only fields of a model: upstream, cost cap, timeout and effect presets. */
+export type ServerModel = Omit<ModelDefinition, keyof PublicModel> & { effect?: ServerEffect };
+
+/** Top-level fields beyond PublicModel become never, so typecheck flags them before the runtime check does. */
+type OnlyPublic<T> = { [K in keyof T]: T[K] & Record<Exclude<keyof T[K], keyof PublicModel>, never> };
+
+/**
+ * For site.models.ts. Pages import that file, so it ships to the browser: any other field (upstream model, cost cap, prompts)
+ * fails typecheck, throws here, and belongs in src/models.server.ts.
+ */
+export function definePublicModels<const T extends readonly PublicModel[]>(models: T & OnlyPublic<T>): T {
+  const ids = new Set<string>();
+  for (const model of models) {
+    if (ids.has(model.id)) throw new Error(`duplicate model id: ${model.id}`);
+    ids.add(model.id);
+    const leaked = [
+      ...Object.keys(model).filter((key) => !(PUBLIC_KEYS as readonly string[]).includes(key)),
+      ...Object.keys(model.effect ?? {})
+        .filter((key) => key !== 'slots')
+        .map((key) => `effect.${key}`),
+      ...(model.effect?.slots ?? []).flatMap((slot) =>
+        Object.keys(slot)
+          .filter((key) => !PUBLIC_SLOT_KEYS.includes(key))
+          .map((key) => `slot ${key}`),
+      ),
+    ];
+    if (leaked.length)
+      throw new Error(
+        `model ${model.id}: ${leaked.join(', ')} would ship to the browser; move it to src/models.server.ts`,
+      );
+  }
+  return models;
+}
+
+/** For src/models.server.ts: joins each public model with its server fields by id, then validates the result like defineModels. */
+export function serverModels<const T extends readonly PublicModel[]>(
+  catalog: T,
+  server: { readonly [K in T[number]['id']]: ServerModel },
+): ModelDefinition[] {
+  const byId: Readonly<Record<string, ServerModel>> = server;
+  const extra = Object.keys(byId).filter((id) => !catalog.some((model) => model.id === id));
+  if (extra.length) throw new Error(`server models without a public entry: ${extra.join(', ')}`);
+  return defineModels(
+    catalog.map((model): ModelDefinition => {
+      const fields = byId[model.id];
+      if (!fields) throw new Error(`model ${model.id}: missing from src/models.server.ts`);
+      // A server object passed through a variable escapes the excess-property check, so a repeated price would otherwise win.
+      const repeated = Object.keys(fields).filter(
+        (key) => key !== 'effect' && (PUBLIC_KEYS as readonly string[]).includes(key),
+      );
+      if (repeated.length)
+        throw new Error(`model ${model.id}: ${repeated.join(', ')} belongs in site.models.ts only`);
+      if (Boolean(model.effect) !== Boolean(fields.effect))
+        throw new Error(`model ${model.id}: effect must be in both site.models.ts and src/models.server.ts`);
+      if (!model.effect || !fields.effect) return { ...fields, ...model, effect: undefined };
+      // Server slots may only add prep prompts; everything the page shows must match site.models.ts.
+      const publicSlots = model.effect.slots;
+      const serverSlots = fields.effect.slots;
+      if (
+        serverSlots &&
+        (serverSlots.length !== publicSlots.length ||
+          serverSlots.some(
+            (slot, i) =>
+              slot.id !== publicSlots[i]?.id ||
+              slot.label !== publicSlots[i]?.label ||
+              slot.required !== publicSlots[i]?.required,
+          ))
+      )
+        throw new Error(`model ${model.id}: server effect slots must match site.models.ts apart from prep`);
+      const slots = serverSlots
+        ? publicSlots.map((slot, i) => ({ ...slot, prep: serverSlots[i]?.prep }))
+        : publicSlots;
+      return { ...fields, ...model, effect: { ...fields.effect, slots } };
+    }),
+  );
 }
 
 function validateEffect(model: ModelDefinition, effect: EffectSpec) {
@@ -313,7 +425,7 @@ function validateRepair(modelId: string, effect: EffectSpec, segment: EffectSegm
   }
 }
 
-export function sanitizeParameters(model: ModelDefinition, input: unknown): Record<string, unknown> {
+export function sanitizeParameters(model: PublicModel, input: unknown): Record<string, unknown> {
   const result: Record<string, unknown> = { ...model.defaults };
   if (input && typeof input === 'object') {
     for (const key of model.allowedParameters) {
@@ -329,7 +441,24 @@ export function sanitizeParameters(model: ModelDefinition, input: unknown): Reco
   return result;
 }
 
-export function creditsFor(model: ModelDefinition, parameters: Record<string, unknown>): number {
+/** Longest lyrics a music job accepts; each model's own limit is checked by the upstream. */
+export const MAX_LYRICS = 3000;
+
+/**
+ * Music needs exactly one lyrics source: the user's lyrics, an instrumental, or lyrics the model writes from the prompt.
+ * Settled once at job creation so the stored input is always a valid request.
+ */
+export function musicParameters(
+  parameters: Record<string, unknown>,
+  lyrics: string | undefined,
+): Record<string, unknown> {
+  const { instrumental, lyrics_optimizer: _, ...rest } = parameters;
+  if (lyrics) return rest;
+  if (instrumental === true) return { ...rest, instrumental: true };
+  return { ...rest, lyrics_optimizer: true };
+}
+
+export function creditsFor(model: PublicModel, parameters: Record<string, unknown>): number {
   const value = typeof model.credits === 'function' ? model.credits(parameters) : model.credits;
   if (!Number.isSafeInteger(value) || value < 0)
     throw new Error(`model ${model.id}: invalid credit price ${value}`);
@@ -343,6 +472,8 @@ export interface JobPart {
   kind?: 'image' | 'video';
   upstreamModel: string;
   prompt: string;
+  /** Music only: the user's lyrics. */
+  lyrics?: string;
   references: { url: string; role: string }[];
   parameters: Record<string, unknown>;
   maxCost?: string;

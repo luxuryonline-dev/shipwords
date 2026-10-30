@@ -16,6 +16,7 @@ One site per keyword: every site shares `packages/`, and each site under `sites/
 - Pages, components, styles and copy belong to the site. Write the site's `DESIGN.md` before changing styles; each site must look distinct from the others.
 - To reuse something from another site, move it into packages or copy it into this site.
 - Every site must have a DMCA page and a contact email.
+- **Browser boundary:** whatever a page imports ships to the browser. Server-only code and data (prompts, upstream models, cost caps, reference clips) go in `*.server.ts`; `site.models.ts` holds only what pages show and `src/models.server.ts` the rest. Secrets come only from the Worker `env` at runtime, and config reaches the browser only through an allowlisting server function. Reviews check this too. Details: [architecture](docs/architecture.md) §4.
 
 ## 2. Money and auth: strict
 
@@ -24,6 +25,7 @@ When changing `packages/core/src/{credits,billing,auth,quota}` or `packages/jobs
 - Every money write carries an idempotency key; multiple writes go into one D1 batch. Concurrency is guarded by CHECK constraints and conditional UPDATEs.
 - Webhooks are trigger signals only. Read state from the provider API; never grant credits from event contents.
 - Job states only move forward. Failed and cancelled jobs settle refunds from their final state.
+- Never refund credits on a path the customer can repeat after the upstream has charged (cancel after submit, a paid render that missed): a refund is a free retry. See [architecture](docs/architecture.md) §6, refunds and upstream charges.
 - Add tests for races, duplicates, out-of-order events and partial failures. Get an independent review before merging.
 
 ## 3. Parallel work (worktrees)
