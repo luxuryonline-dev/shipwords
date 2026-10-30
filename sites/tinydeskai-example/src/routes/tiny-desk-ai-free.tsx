@@ -1,12 +1,13 @@
 import { pageHead } from '@shipwords/core/seo';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { m } from '~/paraglide/messages.js';
+import { FEATURED_EXAMPLE } from '~/site/discovery';
 import { Faq, type FaqItem, faqJsonLd, GuidePage } from '~/site/guide';
 import { formatPrice, packName, perVideo } from '~/site/pricing';
 import site from '../../site.config';
 
-// Free and comparison page: targets "tiny desk ai free", "free online" and "best tiny desk ai generator".
-// States plainly that there is no free render; comparison data comes from the competitor research in the README. When prices change, update here and guides_free_checked.
+// Explain this site’s paid credits and free-workflow distinctions without unverified competitor claims.
+// Pack names and prices use the same product configuration as the checkout.
 
 const PATH = '/tiny-desk-ai-free';
 
@@ -24,65 +25,15 @@ const freeOptions = () => [
   { name: m.guides_free_diy_name(), can: m.guides_free_diy_can(), cannot: m.guides_free_diy_cannot() },
 ];
 
-// Competitor data: the competitor table in the README plus the key competitor breakdowns.
-const generators = () => [
-  {
-    name: site.name,
+const packs = () =>
+  site.products.map((product) => ({
+    name: packName(product),
     people: m.guides_free_gen_us_people(),
     quality: '720p',
-    price: formatPrice(site.products[0]),
+    price: formatPrice(product),
     free: m.guides_free_gen_no(),
     song: m.guides_free_gen_song_silent(),
-  },
-  {
-    name: m.guides_free_gen_tinydeskai_video(),
-    people: m.guides_free_gen_tinydeskai_video_people(),
-    quality: '480p',
-    price: '$9.99',
-    free: m.guides_free_gen_no(),
-    song: m.guides_free_gen_song_silent(),
-  },
-  {
-    name: m.guides_free_gen_seadanse(),
-    people: m.guides_free_gen_seadanse_people(),
-    quality: '480p–1080p',
-    price: '$9.90 (720p)',
-    free: m.guides_free_gen_no(),
-    song: m.guides_free_gen_song(),
-  },
-  {
-    name: m.guides_free_gen_outstandingtinydeskai(),
-    people: '1–5',
-    quality: '480p–1080p',
-    price: m.guides_free_gen_outstandingtinydeskai_price(),
-    free: m.guides_free_gen_no(),
-    song: m.guides_free_gen_not_stated(),
-  },
-  {
-    name: m.guides_free_gen_tinydeskaivideo_org(),
-    people: '1–5',
-    quality: '480p / 720p',
-    price: '$9.99 / $14.99',
-    free: m.guides_free_gen_no(),
-    song: m.guides_free_gen_tinydeskaivideo_org_song(),
-  },
-  {
-    name: m.guides_free_gen_tinydeskai_xyz(),
-    people: '1',
-    quality: '480p',
-    price: '$9.90',
-    free: m.guides_free_gen_no(),
-    song: m.guides_free_gen_not_stated(),
-  },
-  {
-    name: m.guides_free_gen_summrs(),
-    people: m.guides_free_gen_summrs_people(),
-    quality: '720p',
-    price: m.guides_free_gen_summrs_price(),
-    free: m.guides_free_gen_summrs_free(),
-    song: m.guides_free_gen_not_stated(),
-  },
-];
+  }));
 
 const faq = (): FaqItem[] => [
   {
@@ -112,6 +63,7 @@ export const Route = createFileRoute('/tiny-desk-ai-free')({
       title: m.guides_free_meta_title(),
       description: m.guides_free_meta_description(),
       path: PATH,
+      image: `${site.url}/media/${FEATURED_EXAMPLE.clip}.jpg`,
       jsonLd: [faqJsonLd(faq())],
     }),
   component: FreePage,
@@ -168,9 +120,11 @@ function FreePage() {
             </tr>
           </thead>
           <tbody>
-            {generators().map((g) => (
+            {packs().map((g) => (
               <tr key={g.name}>
-                <td>{g.name === site.name ? <strong>{g.name}</strong> : g.name}</td>
+                <td>
+                  <strong>{g.name}</strong>
+                </td>
                 <td>{g.people}</td>
                 <td>{g.quality}</td>
                 <td className="mono">{g.price}</td>
@@ -194,6 +148,9 @@ function FreePage() {
         {m.guides_free_pricing_after()}
       </p>
 
+      <p>
+        <Link to="/refunds">{m.guides_free_refund_link()}</Link>
+      </p>
       <Faq title={m.guides_free_faq_title()} items={faq()} />
     </GuidePage>
   );
