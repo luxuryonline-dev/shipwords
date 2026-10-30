@@ -3,6 +3,7 @@ import { useGeneration } from '@shipwords/jobs/react';
 import { createFileRoute, getRouteApi, Link } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
 import { m } from '~/paraglide/messages.js';
+import { applicationJsonLd, DOG_EXAMPLE, exampleJsonLd, FEATURED_EXAMPLE } from '~/site/discovery';
 import { BeforeYouPay, formatPrice, Plans, packName } from '~/site/pricing';
 import { ReturnNotice, TinyDeskTool } from '~/site/tool';
 import site from '../../site.config';
@@ -24,7 +25,7 @@ const SHOTS = [
 ];
 
 // Viral wall below the hero: the first two are viral TikToks trimmed at the end of the performance (tutorial ad removed), labeled as trend references, not our usage;
-// the third is a real output from this site (lead only: a Georgia coach replaces the Alabama coach, the rest is original). It links back to the product and is the page's VideoObject sample.
+// The third demonstrates a lead-only swap. Demo provenance is labelled alongside the existing videos.
 const VIRAL = [
   {
     tag: m.home_viral_warriors_tag,
@@ -116,29 +117,18 @@ export const Route = createFileRoute('/')({
       title: m.home_title(),
       description: m.home_description({ price: BAND_PRICE }),
       path: '/',
+      image: `${site.url}/media/${FEATURED_EXAMPLE.clip}.jpg`,
       jsonLd: [
         {
-          '@type': 'WebApplication',
+          '@type': 'WebSite',
+          '@id': `${site.url}/#website`,
           name: site.name,
           url: site.url,
-          applicationCategory: 'MultimediaApplication',
-          operatingSystem: 'Web',
-          offers: site.products.map((p) => ({
-            '@type': 'Offer',
-            name: p.name,
-            price: (p.price.amount / 100).toFixed(2),
-            priceCurrency: p.price.currency.toUpperCase(),
-          })),
+          inLanguage: 'en',
         },
-        {
-          '@type': 'VideoObject',
-          name: m.home_viral_new_lead_label(),
-          description: `${m.home_viral_new_lead_hook()} ${m.home_viral_note_ours()}.`,
-          thumbnailUrl: `${site.url}/media/sample-new-lead.jpg`,
-          contentUrl: `${site.url}/media/sample-new-lead.mp4`,
-          uploadDate: '2026-10-27',
-          duration: 'PT18S',
-        },
+        applicationJsonLd(),
+        // The default hero video is visible in the initial HTML without selecting a tab.
+        exampleJsonLd(DOG_EXAMPLE),
         {
           '@type': 'FAQPage',
           mainEntity: FAQ.map((item) => ({

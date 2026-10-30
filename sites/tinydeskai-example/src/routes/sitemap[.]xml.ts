@@ -6,7 +6,14 @@ import site from '../../site.config';
 
 // Register new indexable pages here.
 export const PAGES = ['/', ...GUIDES.map((guide) => guide.path), '/privacy', '/terms', '/refunds', '/dmca'];
-const UPDATED_PAGES = new Set(['/', '/privacy', '/terms', '/refunds', '/dmca']);
+const UPDATED_PAGES = new Set([
+  '/',
+  '/privacy',
+  '/terms',
+  '/refunds',
+  '/dmca',
+  '/how-to-make-outstanding-tiny-desk-ai-video',
+]);
 
 export const Route = createFileRoute('/sitemap.xml')({
   server: {
