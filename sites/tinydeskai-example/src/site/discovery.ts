@@ -1,5 +1,6 @@
 import site from '../../site.config';
 
+// Publication timestamps from the site-owned R2 objects’ Last-Modified metadata.
 export const FEATURED_EXAMPLE = {
   id: 'full-band',
   clip: 'sample-full-band-n',
@@ -9,7 +10,7 @@ export const FEATURED_EXAMPLE = {
   width: 720,
   height: 1280,
   duration: 'PT17.709S',
-  published: '2026-10-29',
+  published: '2026-10-29T21:47:47.000Z',
 } as const;
 
 export const DOG_EXAMPLE = {
@@ -20,7 +21,7 @@ export const DOG_EXAMPLE = {
   width: 540,
   height: 960,
   duration: 'PT17.709S',
-  published: '2026-10-29',
+  published: '2026-10-29T13:12:44.000Z',
 } as const;
 
 export const APP_DESCRIPTION =

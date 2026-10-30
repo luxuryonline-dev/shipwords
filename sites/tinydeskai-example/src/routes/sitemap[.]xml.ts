@@ -13,6 +13,7 @@ const UPDATED_PAGES = new Set([
   '/refunds',
   '/dmca',
   '/how-to-make-outstanding-tiny-desk-ai-video',
+  '/tiny-desk-ai-free',
 ]);
 
 export const Route = createFileRoute('/sitemap.xml')({
