@@ -1,40 +1,73 @@
 import { llmsTxt } from '@shipwords/core/seo';
 import { createFileRoute } from '@tanstack/react-router';
+import { APP_DESCRIPTION, DOG_EXAMPLE, FEATURED_EXAMPLE } from '~/site/discovery';
 import { GUIDES } from '~/site/guide';
 import site from '../../site.config';
 
 export const Route = createFileRoute('/llms.txt')({
   server: {
     handlers: {
-      GET: () =>
-        llmsTxt(
-          site,
-          `Tiny Desk AI Generator makes the viral "Outstanding" Tiny Desk AI video: the end of Charlie Wilson's 2023 NPR Tiny Desk performance of The Gap Band's "Outstanding", as cut on TikTok (band, big laugh close-up, sax solo, band again). Swap any 1 to 5 band members (lead vocals, sax, keys, two backing singers) for anyone (this week's losing coaches, players, celebrities, friends or yourself): tap a band member, add one photo each; spots you leave alone keep the coaches from the viral video. Output: an about 18-second vertical 9:16 MP4 at 720p with the original song plus a silent copy, no watermark, rendered with Kuaishou Kling 4.0 in edit mode in about 7 to 10 minutes. Price: $9.98 per video for 1 to 5 people; packs of 3 for $24.99 and 10 for $59.99; one-time payment, credits never expire, failed videos refund automatically; no free renders. Sign in with Google or email before paying. Photos are deleted within 2 days. Independent fan tool for parody videos, not affiliated with NPR, Tiny Desk Concerts, Charlie Wilson or The Gap Band.`,
-          [
-            {
-              title: 'Tiny Desk AI Generator',
-              path: '/',
-              description:
-                'Swap any 1 to 5 band members in the Outstanding Tiny Desk video; pricing (1 video $9.98, 3 for $24.99, 10 for $59.99, same price for 1 to 5 people); FAQ.',
-            },
-            ...GUIDES.map((guide) => ({ ...guide, title: guide.title(), description: guide.description() })),
-            {
-              title: 'Refund policy',
-              path: '/refunds',
-              description: 'Failed videos refund their credits automatically; unused packs within 14 days.',
-            },
-            {
-              title: 'Privacy policy',
-              path: '/privacy',
-              description: 'Uploaded photos are deleted within 2 days.',
-            },
-            {
-              title: 'DMCA and takedown',
-              path: '/dmca',
-              description: 'How to ask us to remove a video or material.',
-            },
-          ],
-        ),
+      GET: async () => {
+        const base = llmsTxt(site, APP_DESCRIPTION, [
+          { title: site.name, path: '/', description: 'Photo upload, band roles, current pricing and FAQ.' },
+          ...GUIDES.map((guide) => ({ ...guide, title: guide.title(), description: guide.description() })),
+          {
+            title: 'Refund rules',
+            path: '/refunds',
+            description: 'Credit returns, unused-pack refunds and technical defects.',
+          },
+          {
+            title: 'Photo privacy',
+            path: '/privacy',
+            description: 'Photo processing, browser storage and deletion requests.',
+          },
+          { title: 'Terms', path: '/terms', description: 'Adult-only personal parody and sharing rules.' },
+          {
+            title: 'Copyright and likeness removal',
+            path: '/dmca',
+            description: 'Reporting and counter-notice information.',
+          },
+        ]);
+        const priceLines = site.products.map((product) => {
+          const amount = new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: product.price.currency,
+          }).format(product.price.amount / 100);
+          return `- ${product.name}: ${amount} ${product.price.currency.toUpperCase()}, one-time credit pack.`;
+        });
+        const facts = [
+          '## Product facts',
+          '',
+          '- Purpose: a specialized Outstanding Tiny Desk-style AI band face-swap tool.',
+          '- Input: clear face photos in JPEG, PNG or WebP. Users must add at least one photo of their own.',
+          '- Roles: lead vocals, sax, keys, backing vocals left and backing vocals right; replace 1–5 roles per video.',
+          '- Default cast: five dogs. Replace a dog with an uploaded face, leave it in place, or remove it to retain the original performer.',
+          '- Output: approximately 18 seconds, vertical 9:16 MP4 at 720p, with reference audio and a separate silent copy; no added site watermark.',
+          '- Current workflow: Kuaishou Kling 4.0 video-edit mode, with a preset reference performance. Rendering usually takes about 7–10 minutes; queues can make it longer.',
+          '- Sign-in: email; Google sign-in is available only when offered on the site.',
+          '- Scope: no open-ended text-to-video prompt, user-supplied reference-video upload or standalone image-generation feature.',
+          '',
+          '## Pricing and policies',
+          '',
+          ...priceLines,
+          '- One video has the same credit cost for 1–5 replaced performers. No subscription, no free renders; credits do not expire.',
+          '- Failed or refused generations return their spent credits automatically; this is distinct from refunding a payment.',
+          '- Completely unused packs: request a refund within 14 days. Clearly broken completed videos: report within 7 days with the video link. See /refunds for full terms.',
+          '- Uploaded photos are deleted from this site’s storage within 2 days. Provider processing and completed-video retention are described in /privacy.',
+          '- Personal, non-commercial parody only; everyone in uploaded photos must be 18 or older. Source music and footage remain subject to their owners’ rights.',
+          '- Independent of NPR, Tiny Desk Concerts, Charlie Wilson and The Gap Band; not an official or endorsed service.',
+          '',
+          '## Example evidence',
+          '',
+          `- ${site.url}/#make and ${site.url}/#fyp contain the existing video demonstrations.`,
+          `- Site-supplied full-band demo: /media/${FEATURED_EXAMPLE.clip}.mp4, 720×1280, 17.709 seconds. Its input portraits, render time and generation parameters have not been published.`,
+          `- Bundled dog demo: /media/${DOG_EXAMPLE.clip}.mp4, 540×960, 17.709 seconds. Default dog reference portraits appear in the homepage generator.`,
+          '- The stage collage is assembled from output frames. Demo file encoding is distinct from the current generator’s advertised output settings.',
+          '- Examples illustrate the format and are not guarantees of likeness, rendering time or social performance.',
+          '',
+        ];
+        return new Response(`${await base.text()}\n${facts.join('\n')}`, { headers: base.headers });
+      },
     },
   },
 });

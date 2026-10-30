@@ -1,6 +1,7 @@
 import { pageHead } from '@shipwords/core/seo';
 import { createFileRoute } from '@tanstack/react-router';
 import { m } from '~/paraglide/messages.js';
+import { FEATURED_EXAMPLE } from '~/site/discovery';
 import { Faq, type FaqItem, faqJsonLd, GuidePage } from '~/site/guide';
 import { formatPrice } from '~/site/pricing';
 import site from '../../site.config';
@@ -32,6 +33,7 @@ export const Route = createFileRoute('/how-to-make-outstanding-tiny-desk-ai-vide
       title: m.guides_howto_meta_title(),
       description: m.guides_howto_meta_description(),
       path: PATH,
+      image: `${site.url}/media/${FEATURED_EXAMPLE.clip}.jpg`,
       jsonLd: [
         {
           '@type': 'HowTo',
