@@ -56,7 +56,13 @@ export interface EffectSegment {
   /** Swappable slots in this shot; filled slots map to @image1, @image2… in this order. */
   slots: readonly string[];
   /** images only contains filled slots; values are how the prompt refers to them (e.g. @image1). */
-  prompt: (images: Readonly<Record<string, string>>, parameters?: EffectParameters) => string;
+  prompt: (
+    images: Readonly<Record<string, string>>,
+    parameters?: EffectParameters,
+    referenceImages?: Readonly<Record<string, string>>,
+  ) => string;
+  /** Additional site-declared images, appended after performer images in this order. */
+  referenceImages?: readonly string[];
   parameters: Readonly<Record<string, unknown>>;
   /** Upstream cost cap for this segment (USD string), passed to the upstream as max_cost. */
   maxCost: string;
@@ -125,7 +131,12 @@ export interface EffectCompose {
 
 export interface EffectSpec {
   /** Site-owned validation for effect settings. Null rejects the input before charging; settings never become upstream parameters. */
-  parseParameters?: (input: unknown) => EffectParameters | null;
+  parseParameters?: (
+    input: unknown,
+    referenceImages?: Readonly<Record<string, string>>,
+  ) => EffectParameters | null;
+  /** Context images are not performers: no prep, face checks or additional rendering parts. */
+  referenceImages?: readonly { id: string; required: boolean }[];
   slots: readonly EffectSlot[];
   segments: readonly EffectSegment[];
   compose?: EffectCompose;
@@ -153,11 +164,22 @@ function validateEffect(model: ModelDefinition, effect: EffectSpec) {
   const modelId = model.id;
   const slotIds = new Set(effect.slots.map((slot) => slot.id));
   if (slotIds.size !== effect.slots.length) throw new Error(`model ${modelId}: duplicate effect slot`);
+  const imageIds = new Set(effect.referenceImages?.map((image) => image.id));
+  if (
+    imageIds.size !== (effect.referenceImages?.length ?? 0) ||
+    [...imageIds].some((id) => !/^[a-z][a-z0-9_-]*$/.test(id) || slotIds.has(id))
+  )
+    throw new Error(`model ${modelId}: invalid effect reference image names`);
   const segmentIds = new Set<string>();
   for (const segment of effect.segments) {
     if (segmentIds.has(segment.id) || !/^[a-z0-9_-]+$/.test(segment.id))
       throw new Error(`model ${modelId}: bad segment id ${segment.id}`);
     segmentIds.add(segment.id);
+    if (
+      new Set(segment.referenceImages).size !== (segment.referenceImages?.length ?? 0) ||
+      segment.referenceImages?.some((id) => !imageIds.has(id))
+    )
+      throw new Error(`model ${modelId}: segment ${segment.id} has invalid reference images`);
     // A function is called for every slot combination here, so a bad key fails at startup, not on a paid job.
     for (const filled of slotCombinations(segment.slots)) {
       const video = referenceVideoOf(segment, filled);
@@ -244,6 +266,10 @@ function validateEffect(model: ModelDefinition, effect: EffectSpec) {
     if (!effect.segments.some((segment) => segment.slots.includes(slot.id)))
       throw new Error(`model ${modelId}: slot ${slot.id} is in no segment`);
   }
+  for (const id of imageIds) {
+    if (!effect.segments.some((segment) => segment.referenceImages?.includes(id)))
+      throw new Error(`model ${modelId}: reference image ${id} is in no segment`);
+  }
 }
 
 export function sanitizeParameters(model: ModelDefinition, input: unknown): Record<string, unknown> {
@@ -294,10 +320,23 @@ export function effectParts(
   uploadUrl: (ref: unknown) => string | null,
   assetUrl: (key: string) => string,
   inputParameters?: unknown,
+  inputReferences?: unknown,
 ): JobPart[] | null {
   const effect = model.effect;
   if (!effect || !slots || typeof slots !== 'object' || Array.isArray(slots)) return null;
-  const parameters = effect.parseParameters ? effect.parseParameters(inputParameters) : {};
+  const referenceImages: Record<string, string> = {};
+  if (inputReferences !== undefined) {
+    if (!inputReferences || typeof inputReferences !== 'object' || Array.isArray(inputReferences))
+      return null;
+    for (const [id, ref] of Object.entries(inputReferences)) {
+      if (!effect.referenceImages?.some((image) => image.id === id)) return null;
+      const url = uploadUrl(ref);
+      if (!url) return null;
+      referenceImages[id] = url;
+    }
+  }
+  if (effect.referenceImages?.some((image) => image.required && !referenceImages[image.id])) return null;
+  const parameters = effect.parseParameters ? effect.parseParameters(inputParameters, referenceImages) : {};
   if (parameters === null) return null;
   const filled = new Map<string, string>();
   for (const [slotId, ref] of Object.entries(slots)) {
@@ -332,6 +371,7 @@ export function effectParts(
   for (const segment of effect.segments) {
     const used = segment.slots.filter((slotId) => filled.has(slotId));
     if (used.length === 0) continue;
+    const context = (segment.referenceImages ?? []).filter((id) => referenceImages[id]);
     rendered++;
     parts.push({
       id: segment.id,
@@ -339,10 +379,12 @@ export function effectParts(
       prompt: segment.prompt(
         Object.fromEntries(used.map((slotId, i) => [slotId, `@image${i + 1}`])),
         parameters,
+        Object.fromEntries(context.map((id, i) => [id, `@image${used.length + i + 1}`])),
       ),
       references: [
         { url: mediaUrl(referenceVideoOf(segment, used)), role: 'reference_video' },
         ...used.map((slotId) => ({ url: imageUrl(slotId), role: 'reference_image' })),
+        ...context.map((id) => ({ url: referenceImages[id]!, role: 'reference_image' })),
         ...(segment.referenceAudio
           ? [{ url: mediaUrl(segment.referenceAudio), role: 'reference_audio' }]
           : []),

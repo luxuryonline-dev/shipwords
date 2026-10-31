@@ -36,6 +36,8 @@ interface CreateBody {
   parameters?: Record<string, unknown>;
   /** Effects: slot ID → site path returned by the upload endpoint. */
   slots?: Record<string, unknown>;
+  /** Additional effect reference images, keyed by site-declared names. */
+  effectReferences?: Record<string, unknown>;
   recaptchaToken?: string;
 }
 
@@ -156,6 +158,7 @@ export function createJobs(core: Core, models: readonly ModelDefinition[]) {
           uploadUrl,
           (key) => `${baseURL()}/files/${key}`,
           body.parameters,
+          body.effectReferences,
         );
         if (!parts) return errorResponse(400, 'invalid_slots');
         prompt = '';

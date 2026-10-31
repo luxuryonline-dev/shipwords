@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { test } from 'node:test';
-import { customScenePrompt, originalScenePrompt } from '../src/site/prompts.server.ts';
+import { customScenePrompt, originalScenePrompt, photoScenePrompt } from '../src/site/prompts.server.ts';
 import {
   MAX_SCENE_DESCRIPTION,
   parseSceneParameters,
+  restoreScenePhoto,
   SCENE_PRESETS,
   sceneParametersForSelection,
 } from '../src/site/scene.ts';
@@ -134,4 +135,86 @@ test('custom template quotes scenery as data and keeps identity, equipment, timi
     prompt.endsWith('Keep the audio exactly identical to the original video. Do not add any new sounds.'),
   );
   assert.ok(!prompt.includes('Keep everything else unchanged: the room, the shelves'));
+});
+
+test('photo scenery requires a separately bound background and permits optional scene notes', () => {
+  const background = { background: 'https://site/files/uploads/up_bg.jpg' };
+  assert.equal(parseSceneParameters({ sceneMode: 'photo' }), null);
+  assert.deepEqual(parseSceneParameters({ sceneMode: 'photo' }, background), {
+    sceneMode: 'photo',
+    sceneDescription: '',
+  });
+  assert.deepEqual(
+    parseSceneParameters({ sceneMode: 'photo', sceneDescription: '  golden\n hour  ' }, background),
+    { sceneMode: 'photo', sceneDescription: 'golden hour' },
+  );
+  for (const input of [
+    undefined,
+    {},
+    { sceneMode: 'original' },
+    { sceneMode: 'custom', sceneDescription: 'room' },
+    { sceneMode: 'preset', scenePreset: 'rooftop' },
+    { sceneMode: 'photo', scenePreset: 'rooftop' },
+    { sceneMode: 'photo', sceneDescription: null },
+    { sceneMode: 'photo', sceneDescription: '@image_1' },
+    { sceneMode: { toString: null } },
+  ])
+    assert.equal(parseSceneParameters(input, background), null);
+  assert.equal(parseSceneParameters({ sceneMode: 'photo' }, { unknown: 'image' }), null);
+});
+
+test('photo selection keeps the image separate from parameters and ignores it in inactive modes', () => {
+  const path = '/files/uploads/up_bg.jpg';
+  assert.equal(sceneParametersForSelection('photo', ''), null);
+  assert.deepEqual(sceneParametersForSelection('photo', '', path), {
+    sceneMode: 'photo',
+    sceneDescription: '',
+  });
+  assert.deepEqual(sceneParametersForSelection('original', 'old notes', path), { sceneMode: 'original' });
+  assert.deepEqual(sceneParametersForSelection('seaside', 'old notes', path), {
+    sceneMode: 'preset',
+    scenePreset: 'seaside',
+  });
+});
+
+test('restoring a background accepts only recent site upload paths', () => {
+  const now = 1_800_000_000_000;
+  const photo = { path: '/files/uploads/up_abc123.webp', uploadedAt: now - 1000 };
+  assert.deepEqual(restoreScenePhoto(photo, now), photo);
+  for (const value of [
+    null,
+    [],
+    'photo',
+    { ...photo, path: 'https://evil.example/photo.jpg' },
+    { ...photo, path: '/files/uploads/../assets/photo.jpg' },
+    { ...photo, path: 'data:image/png;base64,anything' },
+    { ...photo, path: '/files/uploads/up_abc123.jpg?url=external' },
+    { ...photo, uploadedAt: now + 1 },
+    { ...photo, uploadedAt: now - 24 * 60 * 60_000 },
+    { ...photo, uploadedAt: Number.NaN },
+    { path: photo.path },
+  ])
+    assert.equal(restoreScenePhoto(value, now), null);
+});
+
+test('photo template distinguishes environment and identities for single and full casts', () => {
+  for (const [images, background] of [
+    [{ lead: '@image1' }, '@image2'],
+    [
+      { lead: '@image1', sax: '@image2', keys: '@image3', backLeft: '@image4', backRight: '@image5' },
+      '@image6',
+    ],
+  ]) {
+    const prompt = photoScenePrompt(images, background, 'A "warm" room');
+    const tag = background.replace('@image', '@image_');
+    assert.ok(prompt.includes(`Use ${tag} only as the environment reference`));
+    assert.ok(!prompt.includes(`person or animal in ${tag}.`));
+    assert.ok(prompt.includes('Any people in that photograph are not cast members'));
+    assert.ok(prompt.includes('Preserve hand-to-instrument contact'));
+    assert.ok(prompt.includes('one coherent location throughout all four shots'));
+    assert.ok(prompt.includes(JSON.stringify('A "warm" room')));
+    assert.ok(
+      prompt.endsWith('Keep the audio exactly identical to the original video. Do not add any new sounds.'),
+    );
+  }
 });

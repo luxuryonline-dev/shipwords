@@ -200,5 +200,14 @@
   "common_scene_placeholder": "例如：舒适的爵士酒吧，温暖的琥珀色灯光",
   "common_scene_help": "这里只描述环境，人物、乐器和表演仍以参考视频为基础。",
   "common_scene_note": "自定义场景为实验功能，部分画面细节可能变化。",
-  "common_scene_invalid": "请用 1–240 个字符描述场景，不要填写链接或素材引用标记。"
+  "common_scene_invalid": "请用 1–240 个字符描述场景，不要填写链接或素材引用标记。",
+  "common_scene_photo": "使用背景照片",
+  "common_scene_photo_upload": "背景照片",
+  "common_scene_photo_uploading": "正在上传背景照片…",
+  "common_scene_photo_preview": "你上传的场景参考照片",
+  "common_scene_photo_remove": "移除背景照片",
+  "common_scene_photo_details": "补充场景描述（选填）",
+  "common_scene_photo_help": "请选择清晰的环境照片，建议不含人物。照片仅用于参考场景，其中的人物不会加入乐队。支持 JPG、PNG、WebP，最大 10 MB。临时素材过期后需要重新上传。",
+  "common_scene_photo_required": "请上传背景照片。如果之前的素材已过期，请重新选择。",
+  "common_scene_photo_invalid": "请选择不超过 10 MB 的 JPG、PNG 或 WebP 背景照片。"
 }

@@ -17,7 +17,13 @@ import { LAUNCH_READY } from '~/site/launch';
 import { PhoneHandoff } from '~/site/phone-upload';
 import { photoTooSmall } from '~/site/photo-check';
 import { formatPrice, PricingLink } from '~/site/pricing';
-import { MAX_SCENE_DESCRIPTION, SCENE_PRESETS, sceneParametersForSelection } from '~/site/scene';
+import {
+  MAX_SCENE_DESCRIPTION,
+  restoreScenePhoto,
+  SCENE_PRESETS,
+  type ScenePhoto,
+  sceneParametersForSelection,
+} from '~/site/scene';
 import { openSignIn } from '~/site/sign-in';
 import { TOOL_MODEL } from '~/site/tool-config';
 import site from '../../site.config';
@@ -102,12 +108,14 @@ const root = getRouteApi('__root__');
 const PHOTOS_KEY = 'tinydesk:photos';
 const CONSENT_KEY = 'tinydesk:consent';
 const SCENE_KEY = 'tinydesk:scenery:v1';
+const SCENE_PHOTO_KEY = 'tinydesk:scenery-photo:v1';
 const SCENE_LABELS: Record<string, () => string> = {
   original: m.common_scene_original,
   'living-room': m.common_scene_living_room,
   seaside: m.common_scene_seaside,
   rooftop: m.common_scene_rooftop,
   custom: m.common_scene_custom,
+  photo: m.common_scene_photo,
 };
 
 function store(key: string, value: unknown) {
@@ -149,6 +157,12 @@ export function TinyDeskTool({
   const [scene, setScene] = useState('original');
   const [sceneDescription, setSceneDescription] = useState('');
   const [sceneError, setSceneError] = useState<string | null>(null);
+  const [scenePhoto, setScenePhoto] = useState<ScenePhoto | null>(null);
+  const [sceneUploading, setSceneUploading] = useState(false);
+  const scenePhotoRef = useRef(scenePhoto);
+  scenePhotoRef.current = scenePhoto;
+  const sceneUploadRef = useRef(false);
+  const scenePhotoInput = useRef<HTMLInputElement>(null);
   const sceneDetails = useRef<HTMLDetailsElement>(null);
   const sceneInput = useRef<HTMLTextAreaElement>(null);
   const sceneRef = useRef({ choice: scene, description: sceneDescription });
@@ -180,6 +194,9 @@ export function TinyDeskTool({
     const saved = load<Record<string, string>>(PHOTOS_KEY);
     if (saved) setPhotos(saved);
     if (load<boolean>(CONSENT_KEY)) setConsent(true);
+    const savedScenePhoto = restoreScenePhoto(load<unknown>(SCENE_PHOTO_KEY));
+    setScenePhoto(savedScenePhoto);
+    scenePhotoRef.current = savedScenePhoto;
     const savedScene = load<{ choice?: unknown; description?: unknown }>(SCENE_KEY);
     if (
       savedScene &&
@@ -396,13 +413,28 @@ export function TinyDeskTool({
 
   function selectedSceneParameters() {
     const current = sceneRef.current;
-    const parameters = sceneParametersForSelection(current.choice, current.description);
-    if (!parameters) {
-      setSceneError(m.common_scene_invalid());
-      if (sceneDetails.current) sceneDetails.current.open = true;
-      sceneInput.current?.focus();
+    if (current.choice === 'photo' && sceneUploadRef.current) {
+      setSceneError(m.common_scene_photo_uploading());
+      return null;
     }
-    return parameters;
+    const background = restoreScenePhoto(scenePhotoRef.current)?.path;
+    const parameters = sceneParametersForSelection(current.choice, current.description, background);
+    if (!parameters) {
+      setSceneError(
+        current.choice === 'photo' && !background
+          ? m.common_scene_photo_required()
+          : m.common_scene_invalid(),
+      );
+      if (sceneDetails.current) sceneDetails.current.open = true;
+      if (current.choice === 'photo' && !background) scenePhotoInput.current?.focus();
+      else sceneInput.current?.focus();
+    }
+    return parameters
+      ? {
+          parameters,
+          ...(current.choice === 'photo' && background ? { effectReferences: { background } } : {}),
+        }
+      : null;
   }
 
   function changeScene(choice: string, description: string) {
@@ -413,9 +445,38 @@ export function TinyDeskTool({
     setSceneError(null);
   }
 
+  function changeScenePhoto(value: ScenePhoto | null) {
+    setScenePhoto(value);
+    scenePhotoRef.current = value;
+    store(SCENE_PHOTO_KEY, value);
+  }
+
+  async function onScenePhoto(file: File | undefined) {
+    if (!file || sceneUploadRef.current) return;
+    setSceneError(null);
+    sceneUploadRef.current = true;
+    setSceneUploading(true);
+    try {
+      if (!ACCEPT.includes(file.type) || file.size > 10 * 1024 * 1024)
+        throw new Error(m.common_scene_photo_invalid());
+      if (await photoTooSmall(file)) throw new Error(m.common_tool_photo_small());
+      const path = await uploadReference(file);
+      const photo = restoreScenePhoto({ path, uploadedAt: Date.now() });
+      if (!photo) throw new Error(m.common_tool_upload_failed());
+      changeScenePhoto(photo);
+      track('scene_photo_added', {});
+    } catch (e) {
+      setSceneError(e instanceof Error ? e.message : m.common_tool_upload_failed());
+    } finally {
+      sceneUploadRef.current = false;
+      setSceneUploading(false);
+    }
+  }
+
   async function start() {
-    const sceneParameters = selectedSceneParameters();
-    if (!sceneParameters) return;
+    const selection = selectedSceneParameters();
+    if (!selection) return;
+    const sceneParameters = selection.parameters;
     setUploadError(null);
     setPreparing(true);
     const slots = await uploadDogs(photosRef.current);
@@ -425,6 +486,7 @@ export function TinyDeskTool({
       modelId: MODEL.id,
       slots,
       ...(sceneParameters.sceneMode === 'original' ? {} : { parameters: sceneParameters }),
+      ...(selection.effectReferences ? { effectReferences: selection.effectReferences } : {}),
     });
     if (!job) return;
     track('generate_started', {
@@ -595,7 +657,7 @@ export function TinyDeskTool({
           <select
             id="scene-choice"
             value={scene}
-            disabled={submitting || preparing}
+            disabled={submitting || preparing || sceneUploading}
             onChange={(e) => changeScene(e.target.value, sceneDescription)}
           >
             <option value="original">{m.common_scene_original()}</option>
@@ -605,10 +667,59 @@ export function TinyDeskTool({
               </option>
             ))}
             <option value="custom">{m.common_scene_custom()}</option>
+            <option value="photo">{m.common_scene_photo()}</option>
           </select>
-          {scene === 'custom' && (
+          {scene === 'photo' && (
+            <div className="scene-photo-control">
+              <label htmlFor="scene-photo">{m.common_scene_photo_upload()}</label>
+              <input
+                id="scene-photo"
+                ref={scenePhotoInput}
+                type="file"
+                accept={ACCEPT.join(',')}
+                disabled={submitting || preparing || sceneUploading}
+                aria-describedby="scene-photo-help"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = '';
+                  void onScenePhoto(file);
+                }}
+              />
+              {sceneUploading && <p role="status">{m.common_scene_photo_uploading()}</p>}
+              {scenePhoto && (
+                <div className="scene-photo-preview">
+                  <img
+                    src={scenePhoto.path}
+                    alt={m.common_scene_photo_preview()}
+                    onError={() => {
+                      if (scenePhotoRef.current?.path !== scenePhoto.path) return;
+                      changeScenePhoto(null);
+                      setSceneError(m.common_scene_photo_required());
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="link-button"
+                    disabled={submitting || preparing || sceneUploading}
+                    onClick={() => {
+                      changeScenePhoto(null);
+                      setSceneError(null);
+                    }}
+                  >
+                    {m.common_scene_photo_remove()}
+                  </button>
+                </div>
+              )}
+              <p id="scene-photo-help" className="muted scene-note">
+                {m.common_scene_photo_help()}
+              </p>
+            </div>
+          )}
+          {(scene === 'custom' || scene === 'photo') && (
             <>
-              <label htmlFor="scene-description">{m.common_scene_description()}</label>
+              <label htmlFor="scene-description">
+                {scene === 'photo' ? m.common_scene_photo_details() : m.common_scene_description()}
+              </label>
               <textarea
                 id="scene-description"
                 ref={sceneInput}
@@ -649,7 +760,11 @@ export function TinyDeskTool({
       </label>
 
       <div className="hero-actions">
-        <button type="submit" className="primary" disabled={!LAUNCH_READY || submitting || preparing}>
+        <button
+          type="submit"
+          className="primary"
+          disabled={!LAUNCH_READY || submitting || preparing || sceneUploading}
+        >
           {!LAUNCH_READY ? (
             'Coming soon'
           ) : submitting || preparing ? (

@@ -31,6 +31,7 @@
 - Default to the original room. Inside the disclosure, use a labelled select for original scenery, three preset environments and a custom description. Only the custom selection reveals a short textarea.
 - Use the existing dark panel, cream type and amber focus styling. Controls span the available width and stay usable on mobile. Show a short note that changed scenery can affect small visual details; do not show model names, prompts or infrastructure settings.
 - Preserve the selected scenery and description through sign-in, reload and checkout in the same browser session.
+- Photo scenery adds one option within the same disclosure. Show a labelled background file input, a small uncropped preview, a remove action and optional short scene notes only for that option. Keep photo uploading separate from performer uploads and block generation while it is pending. Save the uploaded path through sign-in and checkout for up to one day; explain that the image guides scenery and people in it are not cast members.
 
 ## Domain brand identity
 

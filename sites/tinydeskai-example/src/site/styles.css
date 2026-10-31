@@ -899,6 +899,23 @@ button:disabled {
   border-radius: 0.6rem;
   padding: 0.75rem;
 }
+
+.scene-photo-control,
+.scene-photo-preview {
+  display: grid;
+  gap: 0.6rem;
+  min-width: 0;
+}
+.scene-photo-preview img {
+  width: 100%;
+  max-height: 180px;
+  object-fit: contain;
+  background: var(--color-stage);
+  border-radius: 8px;
+}
+.scene-photo-preview .link-button {
+  justify-self: start;
+}
 .scene-controls summary {
   cursor: pointer;
   font-weight: 600;
