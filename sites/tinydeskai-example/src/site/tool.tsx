@@ -17,16 +17,17 @@ import { LAUNCH_READY } from '~/site/launch';
 import { PhoneHandoff } from '~/site/phone-upload';
 import { photoTooSmall } from '~/site/photo-check';
 import { formatPrice, PricingLink } from '~/site/pricing';
+import { MAX_SCENE_DESCRIPTION, SCENE_PRESETS, sceneParametersForSelection } from '~/site/scene';
 import { openSignIn } from '~/site/sign-in';
+import { TOOL_MODEL } from '~/site/tool-config';
 import site from '../../site.config';
-import models from '../../site.models';
 
 // The generator on the home page: a stage image with a round face slot on each of the 5 musicians. Click one to upload a photo.
 // The 5 slots start with 5 dogs (the same cast as the hero dog version; every competitor's sample is people, so dogs set us apart): click a dog to swap in your photo,
 // × on your photo puts the dog back, × on a dog keeps the original coach. At least 1 photo of your own; same price for 1–5 people. Sign in (Google One Tap), then buy credits; no free trial. Design: DESIGN.md "Upload area".
 
-const MODEL = models[0];
-const SLOTS = MODEL.effect?.slots ?? [];
+const MODEL = TOOL_MODEL;
+const SLOTS = MODEL.slots;
 const PRODUCT = site.products.find((p) => p.kind === 'credits' && p.credits === MODEL.credits);
 const PRICE = PRODUCT ? formatPrice(PRODUCT) : '';
 
@@ -100,6 +101,14 @@ const root = getRouteApi('__root__');
 // Stage photos and the consent are kept in sessionStorage, so the stage survives leaving for checkout or a reload.
 const PHOTOS_KEY = 'tinydesk:photos';
 const CONSENT_KEY = 'tinydesk:consent';
+const SCENE_KEY = 'tinydesk:scenery:v1';
+const SCENE_LABELS: Record<string, () => string> = {
+  original: m.common_scene_original,
+  'living-room': m.common_scene_living_room,
+  seaside: m.common_scene_seaside,
+  rooftop: m.common_scene_rooftop,
+  custom: m.common_scene_custom,
+};
 
 function store(key: string, value: unknown) {
   try {
@@ -137,6 +146,13 @@ export function TinyDeskTool({
   const dogUploads = useRef(new Map<string, string>());
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [consent, setConsent] = useState(false);
+  const [scene, setScene] = useState('original');
+  const [sceneDescription, setSceneDescription] = useState('');
+  const [sceneError, setSceneError] = useState<string | null>(null);
+  const sceneDetails = useRef<HTMLDetailsElement>(null);
+  const sceneInput = useRef<HTMLTextAreaElement>(null);
+  const sceneRef = useRef({ choice: scene, description: sceneDescription });
+  sceneRef.current = { choice: scene, description: sceneDescription };
   const [highlight, setHighlight] = useState<string[]>([]);
   const [needConsent, setNeedConsent] = useState(false);
   const [resumed, setResumed] = useState(false);
@@ -164,6 +180,16 @@ export function TinyDeskTool({
     const saved = load<Record<string, string>>(PHOTOS_KEY);
     if (saved) setPhotos(saved);
     if (load<boolean>(CONSENT_KEY)) setConsent(true);
+    const savedScene = load<{ choice?: unknown; description?: unknown }>(SCENE_KEY);
+    if (
+      savedScene &&
+      typeof savedScene.choice === 'string' &&
+      Object.hasOwn(SCENE_LABELS, savedScene.choice)
+    ) {
+      setScene(savedScene.choice);
+      if (typeof savedScene.description === 'string')
+        setSceneDescription(savedScene.description.slice(0, MAX_SCENE_DESCRIPTION));
+    }
     // Back from checkout (RESUME_PATH in pricing.tsx): show a notice, then drop resume from the URL so a reload does not repeat it.
     const url = new URL(window.location.href);
     // ?started opens the "generation started" dialog directly, to check it without placing an order.
@@ -368,15 +394,45 @@ export function TinyDeskTool({
     return slots;
   }
 
+  function selectedSceneParameters() {
+    const current = sceneRef.current;
+    const parameters = sceneParametersForSelection(current.choice, current.description);
+    if (!parameters) {
+      setSceneError(m.common_scene_invalid());
+      if (sceneDetails.current) sceneDetails.current.open = true;
+      sceneInput.current?.focus();
+    }
+    return parameters;
+  }
+
+  function changeScene(choice: string, description: string) {
+    setScene(choice);
+    setSceneDescription(description);
+    sceneRef.current = { choice, description };
+    store(SCENE_KEY, { choice, description });
+    setSceneError(null);
+  }
+
   async function start() {
+    const sceneParameters = selectedSceneParameters();
+    if (!sceneParameters) return;
     setUploadError(null);
     setPreparing(true);
     const slots = await uploadDogs(photosRef.current);
     setPreparing(false);
     if (!slots) return;
-    const job = await generate({ modelId: MODEL.id, slots });
+    const job = await generate({
+      modelId: MODEL.id,
+      slots,
+      ...(sceneParameters.sceneMode === 'original' ? {} : { parameters: sceneParameters }),
+    });
     if (!job) return;
-    track('generate_started', { faces: own.length, dogs: filled.length - own.length, another: rendering });
+    track('generate_started', {
+      faces: own.length,
+      dogs: filled.length - own.length,
+      another: rendering,
+      scenery: sceneParameters.sceneMode ?? 'original',
+    });
     showStarted(started.current);
   }
 
@@ -388,6 +444,10 @@ export function TinyDeskTool({
     if (own.length === 0) {
       click('no_photo');
       applyPreset(['lead']);
+      return;
+    }
+    if (!selectedSceneParameters()) {
+      click('scene');
       return;
     }
     if (!consent) {
@@ -524,6 +584,56 @@ export function TinyDeskTool({
       </p>
       <p className="muted tips">{m.common_tool_tips()}</p>
       <PhoneHandoff place={placeFromPhone} />
+
+      <details className="scene-controls" ref={sceneDetails}>
+        <summary>
+          {m.common_scene_heading()}{' '}
+          <span className="scene-summary-value">{(SCENE_LABELS[scene] ?? m.common_scene_original)()}</span>
+        </summary>
+        <div className="scene-controls-body">
+          <label htmlFor="scene-choice">{m.common_scene_label()}</label>
+          <select
+            id="scene-choice"
+            value={scene}
+            disabled={submitting || preparing}
+            onChange={(e) => changeScene(e.target.value, sceneDescription)}
+          >
+            <option value="original">{m.common_scene_original()}</option>
+            {SCENE_PRESETS.map((option) => (
+              <option key={option.id} value={option.id}>
+                {SCENE_LABELS[option.id]!()}
+              </option>
+            ))}
+            <option value="custom">{m.common_scene_custom()}</option>
+          </select>
+          {scene === 'custom' && (
+            <>
+              <label htmlFor="scene-description">{m.common_scene_description()}</label>
+              <textarea
+                id="scene-description"
+                ref={sceneInput}
+                value={sceneDescription}
+                rows={2}
+                maxLength={MAX_SCENE_DESCRIPTION}
+                disabled={submitting || preparing}
+                placeholder={m.common_scene_placeholder()}
+                aria-invalid={Boolean(sceneError)}
+                aria-describedby={sceneError ? 'scene-help scene-error' : 'scene-help'}
+                onChange={(e) => changeScene(scene, e.target.value)}
+              />
+            </>
+          )}
+          <p id="scene-help" className="muted scene-note">
+            {m.common_scene_help()}
+          </p>
+          {scene !== 'original' && <p className="muted scene-note">{m.common_scene_note()}</p>}
+          {sceneError && (
+            <p id="scene-error" className="error scene-note" role="alert">
+              {sceneError}
+            </p>
+          )}
+        </div>
+      </details>
 
       <label className={needConsent && !consent ? 'consent consent-needed' : 'consent'}>
         <input

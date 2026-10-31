@@ -1,9 +1,11 @@
 import { env } from 'cloudflare:test';
 import { getBalance, grantCredits, spendCredits } from '@shipwords/core/credits/ledger';
 import { createDb } from '@shipwords/core/db/client';
+import type { Core } from '@shipwords/core/server';
 import { eq } from 'drizzle-orm';
 import { describe, expect, it, vi } from 'vitest';
 import type { ComposeInput, Composer, FacesInput } from '../src/compose';
+import { createJobs } from '../src/handlers';
 import { appendUpstreamJob, loadJob, markFailed, spendKey } from '../src/lifecycle';
 import { defineModels, type EffectSegment, effectParts, type ModelDefinition } from '../src/models';
 import { PREP_HEDGE_MS, runGeneration, type StepRunner } from '../src/runner';
@@ -63,6 +65,114 @@ const models = defineModels([effectModel]);
 const upload = (ref: unknown) =>
   typeof ref === 'string' && ref.startsWith('/files/uploads/') ? `https://site${ref}` : null;
 const asset = (key: string) => `https://site/files/${key}`;
+
+function modelWithSettings(): ModelDefinition {
+  return {
+    ...effectModel,
+    effect: {
+      ...effectModel.effect!,
+      parseParameters(input): Readonly<Record<string, string>> | null {
+        if (input === undefined) return {};
+        if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
+        const data = input as Record<string, unknown>;
+        return Object.keys(data).every((key) => key === 'setting') &&
+          typeof data.setting === 'string' &&
+          data.setting.trim()
+          ? { setting: data.setting.trim() }
+          : null;
+      },
+      segments: effectModel.effect!.segments.map((segment) => ({
+        ...segment,
+        prompt: (images, settings = {}) =>
+          `${segment.prompt(images, {})} in ${settings.setting ?? 'original'}`,
+      })),
+    },
+  };
+}
+
+describe('validated effect settings', () => {
+  it('passes normalized settings only to the prompt and retains preset vendor parameters and caps', () => {
+    const parts = effectParts(modelWithSettings(), { left: '/files/uploads/up_a.png' }, upload, asset, {
+      setting: ' rooftop ',
+    })!;
+    expect(parts[0]!.prompt).toBe('swap in @image1 in rooftop');
+    expect(parts[0]!.parameters).toEqual({ duration: 6 });
+    expect(parts[0]!.maxCost).toBe('0.30');
+    expect(parts[0]!.references).toHaveLength(2);
+    expect(
+      effectParts(modelWithSettings(), { left: '/files/uploads/up_a.png' }, upload, asset, {
+        setting: 'room',
+        duration: 30,
+      }),
+    ).toBeNull();
+    // Effects without a validator continue to ignore caller parameters exactly as before.
+    expect(
+      effectParts(effectModel, { left: '/files/uploads/up_a.png' }, upload, asset, { duration: 99 }),
+    ).toEqual(effectParts(effectModel, { left: '/files/uploads/up_a.png' }, upload, asset));
+  });
+
+  it('rejects invalid settings before authentication, credit spending or workflow dispatch', async () => {
+    const userId = `settings_${crypto.randomUUID()}`;
+    await grantCredits(db, { userId, amount: 50, source: 'test', idemKey: `grant:${userId}` });
+    const getUser = vi.fn(async () => ({ id: userId }));
+    const dispatch = vi.fn(async () => ({}));
+    const core = {
+      db,
+      getUser,
+      log: vi.fn(),
+      site: { id: 'demo', url: 'https://site' },
+      env: { APP_URL: 'https://site', GENERATION_WORKFLOW: { create: dispatch } },
+    } as unknown as Core;
+    const api = createJobs(core, [modelWithSettings()]);
+    const response = await api.create(
+      new Request('https://site/api/jobs', {
+        method: 'POST',
+        body: JSON.stringify({
+          modelId: 'demo',
+          slots: { left: '/files/uploads/up_a.png' },
+          parameters: { setting: 'room', credits: 0 },
+        }),
+      }),
+    );
+    expect(response.status).toBe(400);
+    expect(getUser).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalled();
+    expect((await getBalance(db, userId)).available).toBe(50);
+    expect(await db.select().from(jobs).where(eq(jobs.userId, userId))).toHaveLength(0);
+  });
+
+  it('persists the resolved prompt, charges the normal amount and dispatches a valid request', async () => {
+    const userId = `settings_${crypto.randomUUID()}`;
+    await grantCredits(db, { userId, amount: 50, source: 'test', idemKey: `grant:${userId}` });
+    const dispatch = vi.fn(async () => ({}));
+    const core = {
+      db,
+      getUser: async () => ({ id: userId }),
+      log: vi.fn(),
+      site: { id: 'demo', url: 'https://site' },
+      env: { APP_URL: 'https://site', GENERATION_WORKFLOW: { create: dispatch } },
+    } as unknown as Core;
+    const response = await createJobs(core, [modelWithSettings()]).create(
+      new Request('https://site/api/jobs', {
+        method: 'POST',
+        body: JSON.stringify({
+          modelId: 'demo',
+          slots: { left: '/files/uploads/up_a.png' },
+          parameters: { setting: ' rooftop ' },
+        }),
+      }),
+    );
+    expect(response.status).toBe(201);
+    expect((await getBalance(db, userId)).available).toBe(40);
+    expect(dispatch).toHaveBeenCalledOnce();
+    const [stored] = await db.select().from(jobs).where(eq(jobs.userId, userId));
+    expect(stored!.prompt).toBe('');
+    const { parts } = JSON.parse(stored!.inputJson);
+    expect(parts[0].prompt).toBe('swap in @image1 in rooftop');
+    expect(parts[0].parameters).toEqual({ duration: 6 });
+    expect(stored!.costCredits).toBe(10);
+  });
+});
 
 describe('effect slot resolution', () => {
   it('renders only segments with filled slots, numbers prompt images by in-segment order, reference video uses reference_video', () => {

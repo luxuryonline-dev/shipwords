@@ -150,7 +150,13 @@ export function createJobs(core: Core, models: readonly ModelDefinition[]) {
       let inputJson: string;
       if (model.effect) {
         // Effect prompts stay server-side: the prompt column is an empty string, so publicJob never exposes it.
-        const parts = effectParts(model, body.slots, uploadUrl, (key) => `${baseURL()}/files/${key}`);
+        const parts = effectParts(
+          model,
+          body.slots,
+          uploadUrl,
+          (key) => `${baseURL()}/files/${key}`,
+          body.parameters,
+        );
         if (!parts) return errorResponse(400, 'invalid_slots');
         prompt = '';
         parameters = {};

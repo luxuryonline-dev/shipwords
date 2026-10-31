@@ -61,6 +61,15 @@ Workers Builds supplies Docker for the image build, so the developer's computer 
 - **Pages**: tool home page, tutorial, template page, meme explainer, free page, pricing, policies; FAQ and structured data on each.
 - **Flow**: sign in (Google or email code), buy credits, generate. No guest trial and no signup bonus.
 
+## Scenery and prompt maintenance
+
+- The generator defaults to the original room. Its optional scenery control offers three preset environments and a short custom description. Custom scenery is experimental; real generation quality must be checked separately from software tests. This first stage does not accept a background photo.
+- Edit generation templates in `src/site/prompts.server.ts`: `originalScenePrompt()` preserves the original room; `customScenePrompt()` changes the environment. `performerInstructions()` holds their shared cast and movement constraints. `PROMPT_VERSIONS` identifies the templates; bump the relevant version when changing a template.
+- `site.models.ts` selects the template after `src/site/scene.ts` validates the request. It also owns the upstream model, credit price, cost cap, reference clip, cut points and original soundtrack. Scene descriptions are data, not a replacement system prompt; they cannot change those settings.
+- `src/site/scene.ts` owns preset environment descriptions, allowed settings and the 240-character limit. `src/site/tool-config.ts` is the public cast/credit metadata shared by the interface and server; it contains no generation templates.
+- The frontend control is in `src/site/tool.tsx`; labels live in `messages/common/en.json` and `zh.json`. The server snapshots the resolved generation parts when the job is created, so later changes do not rewrite existing job prompts.
+- `pnpm --filter ./sites/tinydeskai-example check` includes scenery validation and legacy-prompt regression tests. These tests make no paid generation calls.
+
 ## Media is not in the repo
 
 The reference clips, base clips, song and sample videos are cut from third-party footage and music, so they are not committed:

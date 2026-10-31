@@ -7,7 +7,7 @@
     "build": "node scripts/restore-media.mjs && vite build",
     "preview": "vite build --outDir .preview && node ../../tools/dev-port.mjs vite preview --outDir .preview",
     "typecheck": "paraglide-js compile --project ./project.inlang --outdir ./src/paraglide && tsr generate && wrangler types && tsc --noEmit",
-    "check": "node --test scripts/restore-media.test.mjs && pnpm typecheck && pnpm build && node ../../tools/check-site.mjs .",
+    "check": "node --test scripts/restore-media.test.mjs scripts/scene.test.mjs && pnpm typecheck && pnpm build && node ../../tools/check-site.mjs .",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "db:migrate:remote": "wrangler d1 migrations apply DB --remote",

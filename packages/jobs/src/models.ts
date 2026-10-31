@@ -56,7 +56,7 @@ export interface EffectSegment {
   /** Swappable slots in this shot; filled slots map to @image1, @image2… in this order. */
   slots: readonly string[];
   /** images only contains filled slots; values are how the prompt refers to them (e.g. @image1). */
-  prompt: (images: Readonly<Record<string, string>>) => string;
+  prompt: (images: Readonly<Record<string, string>>, parameters?: EffectParameters) => string;
   parameters: Readonly<Record<string, unknown>>;
   /** Upstream cost cap for this segment (USD string), passed to the upstream as max_cost. */
   maxCost: string;
@@ -124,11 +124,15 @@ export interface EffectCompose {
 }
 
 export interface EffectSpec {
+  /** Site-owned validation for effect settings. Null rejects the input before charging; settings never become upstream parameters. */
+  parseParameters?: (input: unknown) => EffectParameters | null;
   slots: readonly EffectSlot[];
   segments: readonly EffectSegment[];
   compose?: EffectCompose;
   prep?: EffectPrep;
 }
+
+export type EffectParameters = Readonly<Record<string, string>>;
 
 /** Role of the user's reference image. */
 export function referenceRoleOf(model: ModelDefinition): string {
@@ -289,9 +293,12 @@ export function effectParts(
   slots: unknown,
   uploadUrl: (ref: unknown) => string | null,
   assetUrl: (key: string) => string,
+  inputParameters?: unknown,
 ): JobPart[] | null {
   const effect = model.effect;
   if (!effect || !slots || typeof slots !== 'object' || Array.isArray(slots)) return null;
+  const parameters = effect.parseParameters ? effect.parseParameters(inputParameters) : {};
+  if (parameters === null) return null;
   const filled = new Map<string, string>();
   for (const [slotId, ref] of Object.entries(slots)) {
     if (!effect.slots.some((slot) => slot.id === slotId)) return null;
@@ -329,7 +336,10 @@ export function effectParts(
     parts.push({
       id: segment.id,
       upstreamModel: model.upstreamModel,
-      prompt: segment.prompt(Object.fromEntries(used.map((slotId, i) => [slotId, `@image${i + 1}`]))),
+      prompt: segment.prompt(
+        Object.fromEntries(used.map((slotId, i) => [slotId, `@image${i + 1}`])),
+        parameters,
+      ),
       references: [
         { url: mediaUrl(referenceVideoOf(segment, used)), role: 'reference_video' },
         ...used.map((slotId) => ({ url: imageUrl(slotId), role: 'reference_image' })),
