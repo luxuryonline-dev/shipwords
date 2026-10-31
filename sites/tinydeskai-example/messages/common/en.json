@@ -188,5 +188,17 @@
   "common_phone_sent": "{count} sent · check your computer",
   "common_phone_failed": "A photo didn't make it. Pick it again.",
   "common_phone_small": "A photo is too small for a face swap. Pick a larger one.",
-  "common_phone_expired": "This link expired. Get a new code on your computer and scan again."
+  "common_phone_expired": "This link expired. Get a new code on your computer and scan again.",
+  "common_scene_heading": "Scenery",
+  "common_scene_label": "Choose a setting",
+  "common_scene_original": "Original room",
+  "common_scene_living_room": "Warm living room",
+  "common_scene_seaside": "Seaside terrace",
+  "common_scene_rooftop": "Rooftop at dusk",
+  "common_scene_custom": "Describe a setting",
+  "common_scene_description": "Describe the surroundings",
+  "common_scene_placeholder": "e.g. a cozy jazz lounge with warm amber lights",
+  "common_scene_help": "Describe the setting only. Your cast, instruments and performance stay based on the reference video.",
+  "common_scene_note": "Custom scenery is experimental. Small visual details may change.",
+  "common_scene_invalid": "Use 1–240 characters describing the scenery, without links or reference tags."
 }

@@ -893,6 +893,37 @@ button:disabled {
   font-size: 0.8rem;
   text-decoration: underline;
 }
+.scene-controls {
+  margin-top: 1rem;
+  border: 1px solid var(--color-line);
+  border-radius: 0.6rem;
+  padding: 0.75rem;
+}
+.scene-controls summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.scene-summary-value {
+  color: var(--color-muted);
+  font-size: 0.85em;
+  font-weight: 400;
+  margin-inline-start: 0.5rem;
+}
+.scene-controls-body {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+.scene-controls-body select,
+.scene-controls-body textarea {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.scene-note {
+  margin: 0;
+  font-size: 0.85rem;
+}
 .tool .results {
   margin-top: 1.5rem;
 }

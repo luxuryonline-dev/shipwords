@@ -188,5 +188,17 @@
   "common_phone_sent": "已传 {count} 张 · 去电脑上看",
   "common_phone_failed": "有一张没传上，再选一次。",
   "common_phone_small": "有张照片太小，换不了脸。请换一张更大的。",
-  "common_phone_expired": "链接过期了，在电脑上换个新二维码再扫。"
+  "common_phone_expired": "链接过期了，在电脑上换个新二维码再扫。",
+  "common_scene_heading": "场景",
+  "common_scene_label": "选择表演场景",
+  "common_scene_original": "原视频场景",
+  "common_scene_living_room": "温暖客厅",
+  "common_scene_seaside": "海边露台",
+  "common_scene_rooftop": "黄昏屋顶",
+  "common_scene_custom": "描述新场景",
+  "common_scene_description": "描述周围环境",
+  "common_scene_placeholder": "例如：舒适的爵士酒吧，温暖的琥珀色灯光",
+  "common_scene_help": "这里只描述环境，人物、乐器和表演仍以参考视频为基础。",
+  "common_scene_note": "自定义场景为实验功能，部分画面细节可能变化。",
+  "common_scene_invalid": "请用 1–240 个字符描述场景，不要填写链接或素材引用标记。"
 }

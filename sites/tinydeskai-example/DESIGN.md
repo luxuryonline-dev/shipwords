@@ -25,6 +25,13 @@
 - **Crew line-up**: not equal-sized cards but a gig-poster line-up: one crew per row, big Anton name (amber on odd rows), a one-line description on the right, thin dividers.
 - **Content pages** (tutorial, template, guides): long poster-paper cards, `#efe6d2` with a faint halftone, ink text, serif headings, Anton tags, mono tables.
 
+## Optional scenery control
+
+- Keep the existing homepage sections and photo stage. Add a compact, closed-by-default “Scenery” disclosure between phone upload and consent.
+- Default to the original room. Inside the disclosure, use a labelled select for original scenery, three preset environments and a custom description. Only the custom selection reveals a short textarea.
+- Use the existing dark panel, cream type and amber focus styling. Controls span the available width and stay usable on mobile. Show a short note that changed scenery can affect small visual details; do not show model names, prompts or infrastructure settings.
+- Preserve the selected scenery and description through sign-in, reload and checkout in the same browser session.
+
 ## Domain brand identity
 
 - The brand for tinydeskaigenerator.org is Tiny Desk AI Generator. Match the site name, homepage brand mentions and logo assets to that name.

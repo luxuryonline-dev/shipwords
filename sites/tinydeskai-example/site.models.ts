@@ -1,4 +1,7 @@
 import { defineModels } from '@shipwords/jobs/models';
+import { customScenePrompt, originalScenePrompt } from './src/site/prompts.server';
+import { parseSceneParameters } from './src/site/scene';
+import { TOOL_MODEL } from './src/site/tool-config';
 
 // One effect: 1.375–19.063 s of the viral TikTok Tiny Desk clip (skips the opening side view of the singer; 17.688 s, 4 shots). Same price for 1–5 people.
 // The whole clip renders in one run: Kling 4.0 edit mode (Edit @video_1) replaces every person who has a photo entirely (face, hair and clothes from the photo);
@@ -7,52 +10,16 @@ import { defineModels } from '@shipwords/jobs/models';
 // Assets live in R2 under assets/tinydesk/: full-17s.mp4 is that span of the viral clip as is (720×1280, 24 fps, with the song),
 // used as the reference video, the original for the face check and the base clip.
 
-/** Who sits in each seat of the original, by position and outfit, so the model knows whom to replace. This order is the @image_1… order. */
-const WHO = {
-  lead: 'the lead singer in the red cap and black hoodie',
-  sax: 'the saxophone player in the navy hoodie',
-  keys: 'the keyboard player in the white cap and black pullover',
-  backLeft: 'the backing singer standing at the back left in the white pullover',
-  backRight: 'the backing singer standing at the back right in the red jacket',
-} as const;
-type Seat = keyof typeof WHO;
-
-/**
- * The prompt follows the tested run: start with Edit @video_1 (written as Reference it becomes reference-to-video), replace each person,
- * then keep motion, expressions, lip sync, camera, cuts and duration frame by frame. The engine names images @image1; Kling 4.0 wants @image_1 and Yir rejects the wrong name.
- * The stage starts with 5 dogs, so a photo may be a person or a dog and the server cannot tell; the prompt says "person or animal".
- * The animal sentence and "no lead singer or new character in the band shots" come from the tested dog run: without them a second lead appears and hands stay human.
- * A mix of people and dogs in one job is untested.
- */
-function editPrompt(images: Readonly<Record<string, string>>) {
-  const filled = (Object.keys(WHO) as Seat[]).filter((seat) => images[seat]);
-  const swaps = filled.map(
-    (seat) =>
-      `Replace ${WHO[seat]} with the person or animal in ${images[seat]!.replace(/^@image(\d+)$/, '@image_$1')}.`,
-  );
-  const others =
-    filled.length < Object.keys(WHO).length ? ' Everyone else stays exactly as in @video_1.' : '';
-  return [
-    'Edit @video_1.',
-    ...swaps,
-    'The lead singer appears only in the close-up shot; the wide band shots show only the keyboard player and the two backing singers, so do not add the lead singer or any other new character to them.',
-    "A performer replaced with a dog or another animal becomes that animal completely, with its fur, face and paws; every visible hand of that performer, including raised hands, clapping hands, hands on the keyboard and hands partly outside the frame edges, becomes the animal's furry paws with no human fingers or skin.",
-    `Each replaced performer keeps the original person's position, pose, head direction, gestures, facial expressions and mouth movements frame by frame, and wears the clothes from their own photo.${others}`,
-    'Keep everything else unchanged: the room, the shelves, the instruments, the microphones, the camera cuts, the camera movement, the lighting, the timing and the video duration.',
-    'Keep the audio exactly identical to the original video. Do not add any new sounds.',
-  ].join(' ');
-}
-
 const CLIP = 'assets/tinydesk/full-17s.mp4';
 
 export default defineModels([
   {
-    id: 'tiny-desk',
+    id: TOOL_MODEL.id,
     name: 'Tiny Desk video',
     kind: 'video',
     upstream: 'yir',
     upstreamModel: 'klingai/kling-4.0',
-    credits: 10,
+    credits: TOOL_MODEL.credits,
     guest: false,
     allowedParameters: [],
     maxReferences: 0,
@@ -61,19 +28,17 @@ export default defineModels([
     // Usually about 8 minutes (6 to generate, 2 for the face check and compose), with room for upstream queues.
     timeoutMinutes: 30,
     effect: {
-      slots: [
-        { id: 'lead', label: 'Lead vocals', required: false },
-        { id: 'sax', label: 'Sax', required: false },
-        { id: 'keys', label: 'Keys', required: false },
-        { id: 'backLeft', label: 'Backing vocals (left)', required: false },
-        { id: 'backRight', label: 'Backing vocals (right)', required: false },
-      ],
+      parseParameters: parseSceneParameters,
+      slots: TOOL_MODEL.slots,
       segments: [
         {
           id: 'full',
           referenceVideo: CLIP,
           slots: ['lead', 'sax', 'keys', 'backLeft', 'backRight'],
-          prompt: editPrompt,
+          prompt: (images, settings = { sceneMode: 'original' }) =>
+            settings.sceneMode === 'original'
+              ? originalScenePrompt(images)
+              : customScenePrompt(images, settings.sceneDescription!),
           // duration must be a whole number: the 17.688 s reference asks for 18 s, which comes back as 18.04 s with each cut 1–3 frames late; compose re-aligns shot by shot.
           // generate_audio can only be on with Yir; compose swaps the original song back in.
           parameters: { duration: 18, resolution: '720p', aspect_ratio: 'auto' },
