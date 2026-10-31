@@ -209,5 +209,9 @@
   "common_scene_photo_details": "补充场景描述（选填）",
   "common_scene_photo_help": "请选择清晰的环境照片，建议不含人物。照片仅用于参考场景，其中的人物不会加入乐队。支持 JPG、PNG、WebP，最大 10 MB。临时素材过期后需要重新上传。",
   "common_scene_photo_required": "请上传背景照片。如果之前的素材已过期，请重新选择。",
-  "common_scene_photo_invalid": "请选择不超过 10 MB 的 JPG、PNG 或 WebP 背景照片。"
+  "common_scene_photo_invalid": "请选择不超过 10 MB 的 JPG、PNG 或 WebP 背景照片。",
+  "common_scene_photo_choose": "选择背景照片",
+  "common_scene_photo_change": "更换背景照片",
+  "common_scene_photo_ready": "背景照片已就绪。",
+  "common_scene_photo_empty": "尚未选择背景照片。"
 }

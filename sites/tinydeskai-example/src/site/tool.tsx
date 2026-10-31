@@ -163,6 +163,7 @@ export function TinyDeskTool({
   scenePhotoRef.current = scenePhoto;
   const sceneUploadRef = useRef(false);
   const scenePhotoInput = useRef<HTMLInputElement>(null);
+  const scenePhotoButton = useRef<HTMLButtonElement>(null);
   const sceneDetails = useRef<HTMLDetailsElement>(null);
   const sceneInput = useRef<HTMLTextAreaElement>(null);
   const sceneRef = useRef({ choice: scene, description: sceneDescription });
@@ -426,7 +427,7 @@ export function TinyDeskTool({
           : m.common_scene_invalid(),
       );
       if (sceneDetails.current) sceneDetails.current.open = true;
-      if (current.choice === 'photo' && !background) scenePhotoInput.current?.focus();
+      if (current.choice === 'photo' && !background) scenePhotoButton.current?.focus();
       else sceneInput.current?.focus();
     }
     return parameters
@@ -676,6 +677,7 @@ export function TinyDeskTool({
                 id="scene-photo"
                 ref={scenePhotoInput}
                 type="file"
+                hidden
                 accept={ACCEPT.join(',')}
                 disabled={submitting || preparing || sceneUploading}
                 aria-describedby="scene-photo-help"
@@ -685,7 +687,23 @@ export function TinyDeskTool({
                   void onScenePhoto(file);
                 }}
               />
-              {sceneUploading && <p role="status">{m.common_scene_photo_uploading()}</p>}
+              <button
+                ref={scenePhotoButton}
+                type="button"
+                className="button scene-photo-pick"
+                disabled={submitting || preparing || sceneUploading}
+                aria-describedby="scene-photo-help"
+                onClick={() => scenePhotoInput.current?.click()}
+              >
+                {scenePhoto ? m.common_scene_photo_change() : m.common_scene_photo_choose()}
+              </button>
+              <p className="muted scene-note" role="status">
+                {sceneUploading
+                  ? m.common_scene_photo_uploading()
+                  : scenePhoto
+                    ? m.common_scene_photo_ready()
+                    : m.common_scene_photo_empty()}
+              </p>
               {scenePhoto && (
                 <div className="scene-photo-preview">
                   <img
