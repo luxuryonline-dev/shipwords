@@ -209,5 +209,9 @@
   "common_scene_photo_details": "Additional scenery details (optional)",
   "common_scene_photo_help": "Use a clear setting photo, ideally without people. It guides the scenery; people in it are not added to your cast. JPG, PNG or WebP, up to 10 MB. Temporary uploads may need to be selected again.",
   "common_scene_photo_required": "Upload a background photo to use this setting. If an earlier upload expired, choose it again.",
-  "common_scene_photo_invalid": "Choose a JPG, PNG or WebP background photo of up to 10 MB."
+  "common_scene_photo_invalid": "Choose a JPG, PNG or WebP background photo of up to 10 MB.",
+  "common_scene_photo_choose": "Choose background photo",
+  "common_scene_photo_change": "Change background photo",
+  "common_scene_photo_ready": "Background photo ready.",
+  "common_scene_photo_empty": "No background photo selected."
 }
