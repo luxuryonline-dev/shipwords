@@ -174,6 +174,199 @@ describe('validated effect settings', () => {
   });
 });
 
+function modelWithContext(): ModelDefinition {
+  return {
+    ...effectModel,
+    effect: {
+      ...effectModel.effect!,
+      referenceImages: [
+        { id: 'background', required: false },
+        { id: 'palette', required: false },
+      ],
+      parseParameters(input, references = {}): Readonly<Record<string, string>> | null {
+        if (input === undefined && Object.keys(references).length === 0) return {};
+        return (input as { mode?: string })?.mode === 'photo' && references.background
+          ? { mode: 'photo' }
+          : null;
+      },
+      segments: effectModel.effect!.segments.map((segment) => ({
+        ...segment,
+        referenceImages: ['background', 'palette'],
+        prompt: (images, _parameters, context = {}) =>
+          `${segment.prompt(images)}; scenery ${context.background ?? '-'} palette ${context.palette ?? '-'}`,
+      })),
+    },
+  };
+}
+
+describe('named effect reference images', () => {
+  it('numbers context after performers in each segment, independent of request order', () => {
+    const context = { palette: '/files/uploads/up_palette.jpg', background: '/files/uploads/up_bg.jpg' };
+    const parts = effectParts(
+      modelWithContext(),
+      { right: '/files/uploads/up_b.png', left: '/files/uploads/up_a.png' },
+      upload,
+      asset,
+      { mode: 'photo' },
+      context,
+    )!;
+    expect(parts.map((part) => part.id)).toEqual(['left', 'right', 'group']);
+    expect(parts[0]!.prompt).toBe('swap in @image1; scenery @image2 palette @image3');
+    expect(parts[2]!.prompt).toBe('group @image1 @image2; scenery @image3 palette @image4');
+    expect(parts[2]!.slots).toEqual(['left', 'right']);
+    expect(parts[2]!.references.slice(1).map((image) => image.url)).toEqual([
+      'https://site/files/uploads/up_a.png',
+      'https://site/files/uploads/up_b.png',
+      'https://site/files/uploads/up_bg.jpg',
+      'https://site/files/uploads/up_palette.jpg',
+    ]);
+    expect(parts[2]!.parameters).toEqual(effectModel.effect!.segments[2]!.parameters);
+    expect(parts[2]!.maxCost).toBe(effectModel.effect!.segments[2]!.maxCost);
+    expect(buildYirRequest({ kind: 'video', ...parts[2]! }).input).toMatchObject({
+      type: 'reference',
+      references: parts[2]!.references,
+    });
+  });
+
+  it('rejects undeclared images, missing required images, invalid paths and invalid containers', () => {
+    const model = modelWithContext();
+    const slots = { left: '/files/uploads/up_a.png' };
+    for (const references of [
+      null,
+      [],
+      'image',
+      { unknown: '/files/uploads/up_bg.jpg' },
+      { background: 'https://evil/photo.jpg' },
+    ])
+      expect(effectParts(model, slots, upload, asset, { mode: 'photo' }, references)).toBeNull();
+    expect(effectParts(model, slots, upload, asset, { mode: 'photo' })).toBeNull();
+    expect(
+      effectParts(model, {}, upload, asset, { mode: 'photo' }, { background: '/files/uploads/up_bg.jpg' }),
+    ).toBeNull();
+    const required: ModelDefinition = {
+      ...model,
+      effect: {
+        ...model.effect!,
+        referenceImages: [
+          { id: 'background', required: true },
+          { id: 'palette', required: false },
+        ],
+      },
+    };
+    expect(effectParts(required, slots, upload, asset)).toBeNull();
+    expect(
+      effectParts(effectModel, slots, upload, asset, undefined, { background: '/files/uploads/up_bg.jpg' }),
+    ).toBeNull();
+    expect(effectParts(effectModel, slots, upload, asset, undefined, {})).toEqual(
+      effectParts(effectModel, slots, upload, asset),
+    );
+  });
+
+  it('validates unique declared image names and segment usage at startup', () => {
+    const model = modelWithContext();
+    expect(defineModels([model])).toHaveLength(1);
+    for (const effect of [
+      { ...model.effect!, referenceImages: [{ id: 'left', required: false }] },
+      {
+        ...model.effect!,
+        referenceImages: [
+          { id: 'background', required: false },
+          { id: 'background', required: true },
+        ],
+      },
+      {
+        ...model.effect!,
+        segments: model.effect!.segments.map((s) => ({ ...s, referenceImages: ['unknown'] })),
+      },
+      {
+        ...model.effect!,
+        segments: model.effect!.segments.map((s) => ({
+          ...s,
+          referenceImages: ['background', 'background'],
+        })),
+      },
+      { ...model.effect!, segments: model.effect!.segments.map((s) => ({ ...s, referenceImages: [] })) },
+    ])
+      expect(() => defineModels([{ ...model, effect }])).toThrow(/reference image/);
+  });
+
+  it('rejects invalid background requests before authentication, spending or dispatch', async () => {
+    const userId = `context_${crypto.randomUUID()}`;
+    await grantCredits(db, { userId, amount: 50, source: 'test', idemKey: `grant:${userId}` });
+    const getUser = vi.fn(async () => ({ id: userId }));
+    const dispatch = vi.fn(async () => ({}));
+    const core = {
+      db,
+      getUser,
+      log: vi.fn(),
+      site: { id: 'demo', url: 'https://site' },
+      env: { APP_URL: 'https://site', GENERATION_WORKFLOW: { create: dispatch } },
+    } as unknown as Core;
+    for (const effectReferences of [
+      undefined,
+      { background: 'https://evil.example/photo.jpg' },
+      { background: 'https://site/files/uploads/../secret.png' },
+      { background: '/files/uploads/up_bg.jpg?other=1' },
+      { background: '/files/uploads/up_bg.jpg', unknown: '/files/uploads/up_other.jpg' },
+    ]) {
+      const response = await createJobs(core, [modelWithContext()]).create(
+        new Request('https://site/api/jobs', {
+          method: 'POST',
+          body: JSON.stringify({
+            modelId: 'demo',
+            slots: { left: '/files/uploads/up_a.png' },
+            parameters: { mode: 'photo' },
+            effectReferences,
+          }),
+        }),
+      );
+      expect(response.status).toBe(400);
+    }
+    expect(getUser).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalled();
+    expect((await getBalance(db, userId)).available).toBe(50);
+    expect(await db.select().from(jobs).where(eq(jobs.userId, userId))).toHaveLength(0);
+  });
+
+  it('stores background bindings in the immutable job input, outside performer checks and pricing', async () => {
+    const userId = `context_${crypto.randomUUID()}`;
+    await grantCredits(db, { userId, amount: 50, source: 'test', idemKey: `grant:${userId}` });
+    const dispatch = vi.fn(async () => ({}));
+    const core = {
+      db,
+      getUser: async () => ({ id: userId }),
+      log: vi.fn(),
+      site: { id: 'demo', url: 'https://site' },
+      env: { APP_URL: 'https://site', GENERATION_WORKFLOW: { create: dispatch } },
+    } as unknown as Core;
+    const response = await createJobs(core, [modelWithContext()]).create(
+      new Request('https://site/api/jobs', {
+        method: 'POST',
+        body: JSON.stringify({
+          modelId: 'demo',
+          slots: { left: '/files/uploads/up_a.png' },
+          parameters: { mode: 'photo' },
+          effectReferences: { background: '/files/uploads/up_bg.jpg' },
+        }),
+      }),
+    );
+    expect(response.status).toBe(201);
+    expect((await getBalance(db, userId)).available).toBe(40);
+    expect(dispatch).toHaveBeenCalledOnce();
+    const [stored] = await db.select().from(jobs).where(eq(jobs.userId, userId));
+    expect(stored!.prompt).toBe('');
+    const { parts } = JSON.parse(stored!.inputJson);
+    expect(parts[0].prompt).toBe('swap in @image1; scenery @image2 palette -');
+    expect(parts[0].slots).toEqual(['left']);
+    expect(parts[0].references.at(-1)).toEqual({
+      url: 'https://site/files/uploads/up_bg.jpg',
+      role: 'reference_image',
+    });
+    expect(parts[0].parameters).toEqual({ duration: 6 });
+    expect(stored!.costCredits).toBe(10);
+  });
+});
+
 describe('effect slot resolution', () => {
   it('renders only segments with filled slots, numbers prompt images by in-segment order, reference video uses reference_video', () => {
     const parts = effectParts(effectModel, { left: '/files/uploads/up_a.png' }, upload, asset)!;

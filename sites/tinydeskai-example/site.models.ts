@@ -1,5 +1,5 @@
 import { defineModels } from '@shipwords/jobs/models';
-import { customScenePrompt, originalScenePrompt } from './src/site/prompts.server';
+import { customScenePrompt, originalScenePrompt, photoScenePrompt } from './src/site/prompts.server';
 import { parseSceneParameters } from './src/site/scene';
 import { TOOL_MODEL } from './src/site/tool-config';
 
@@ -29,16 +29,20 @@ export default defineModels([
     timeoutMinutes: 30,
     effect: {
       parseParameters: parseSceneParameters,
+      referenceImages: [{ id: 'background', required: false }],
       slots: TOOL_MODEL.slots,
       segments: [
         {
           id: 'full',
           referenceVideo: CLIP,
           slots: ['lead', 'sax', 'keys', 'backLeft', 'backRight'],
-          prompt: (images, settings = { sceneMode: 'original' }) =>
+          referenceImages: ['background'],
+          prompt: (images, settings = { sceneMode: 'original' }, references = {}) =>
             settings.sceneMode === 'original'
               ? originalScenePrompt(images)
-              : customScenePrompt(images, settings.sceneDescription!),
+              : settings.sceneMode === 'photo'
+                ? photoScenePrompt(images, references.background!, settings.sceneDescription)
+                : customScenePrompt(images, settings.sceneDescription!),
           // duration must be a whole number: the 17.688 s reference asks for 18 s, which comes back as 18.04 s with each cut 1–3 frames late; compose re-aligns shot by shot.
           // generate_audio can only be on with Yir; compose swaps the original song back in.
           parameters: { duration: 18, resolution: '720p', aspect_ratio: 'auto' },

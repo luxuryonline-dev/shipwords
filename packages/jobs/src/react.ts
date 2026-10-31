@@ -24,6 +24,8 @@ export interface GenerateInput {
   parameters?: Record<string, unknown>;
   /** Effects: slot ID → path returned by uploadReference. */
   slots?: Record<string, string>;
+  /** Additional effect reference images, separate from performer slots. */
+  effectReferences?: Record<string, string>;
 }
 
 const isActive = (job: PublicJob) => job.status === 'queued' || job.status === 'submitted';
